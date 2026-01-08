@@ -1,0 +1,22 @@
+name: svg2ico-cluster
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: svg2ico-postgres
+    environment:
+      POSTGRES_USER: svg2ico
+      POSTGRES_PASSWORD: svg2ico_dev_password
+      POSTGRES_DB: svg2ico
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U svg2ico"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

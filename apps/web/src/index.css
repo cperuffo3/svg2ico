@@ -1,0 +1,28 @@
+/**
+ * Main Stylesheet
+ * Imports design system and base styles
+ */
+
+/* Tailwind */
+@import 'tailwindcss';
+
+/* Design System */
+@import './styles/primitives.css';
+@import './styles/tokens.css';
+
+/* Dark mode variant */
+@custom-variant dark (&:is(.dark *));
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}

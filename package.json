@@ -1,0 +1,41 @@
+{
+  "name": "svg2ico",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.27.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "dev:full": "docker-compose -f docker/docker-compose.yml up -d --wait && pnpm db:generate && pnpm db:migrate && turbo dev",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
+    "db:migrate": "pnpm --filter @svg2ico/api db:migrate",
+    "db:studio": "pnpm --filter @svg2ico/api db:studio",
+    "db:generate": "pnpm --filter @svg2ico/api db:generate",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint -- --fix",
+    "type-check": "turbo type-check",
+    "check": "pnpm lint:fix && pnpm type-check",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "clean": "turbo clean && rimraf node_modules",
+    "init-project": "pnpm install && node scripts/init.mjs",
+    "changeset": "changeset",
+    "changeset:version": "changeset version"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@inquirer/prompts": "^8.1.0",
+    "eslint-plugin-tailwind-canonical-classes": "^1.1.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "rimraf": "^6.1.2",
+    "turbo": "^2.7.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,1 @@
+export { ErrorBoundaryProvider } from './ErrorBoundaryProvider';

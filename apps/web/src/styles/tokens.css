@@ -1,0 +1,121 @@
+/**
+ * Design System - Semantic Tokens
+ * References color primitives with light/dark mode support
+ * Import primitives.css before this file
+ */
+
+/* ========================================
+   TAILWIND THEME REGISTRATION
+   Registers all semantic tokens for Tailwind utilities
+   ======================================== */
+
+@theme inline {
+  /* Typography */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+
+  /* Radius */
+  --radius-sm: calc(var(--radius-lg) - 4px);
+  --radius-md: calc(var(--radius-lg) - 2px);
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* ========================================
+     SHADCN/UI SEMANTIC COLORS
+     ======================================== */
+
+  --color-background: var(--bg-background);
+  --color-foreground: var(--fg-foreground);
+
+  --color-card: var(--bg-card);
+  --color-card-foreground: var(--fg-card);
+
+  --color-popover: var(--bg-popover);
+  --color-popover-foreground: var(--fg-popover);
+
+  --color-primary: var(--bg-primary);
+  --color-primary-foreground: var(--fg-primary);
+
+  --color-secondary: var(--bg-secondary);
+  --color-secondary-foreground: var(--fg-secondary);
+
+  --color-muted: var(--bg-muted);
+  --color-muted-foreground: var(--fg-muted);
+
+  --color-accent: var(--bg-accent);
+  --color-accent-foreground: var(--fg-accent);
+
+  --color-destructive: var(--bg-destructive);
+  --color-destructive-foreground: var(--fg-destructive);
+
+  --color-border: var(--border-default);
+  --color-input: var(--border-input);
+  --color-ring: var(--ring-default);
+}
+
+/* ========================================
+   LIGHT MODE (Default)
+   ======================================== */
+
+:root {
+  /* Background */
+  --bg-background: var(--color-white);
+  --bg-card: var(--color-white);
+  --bg-popover: var(--color-white);
+  --bg-primary: var(--color-zinc-900);
+  --bg-secondary: var(--color-zinc-100);
+  --bg-muted: var(--color-zinc-100);
+  --bg-accent: var(--color-zinc-100);
+  --bg-destructive: var(--color-red-500);
+
+  /* Foreground */
+  --fg-foreground: var(--color-zinc-950);
+  --fg-card: var(--color-zinc-950);
+  --fg-popover: var(--color-zinc-950);
+  --fg-primary: var(--color-zinc-50);
+  --fg-secondary: var(--color-zinc-900);
+  --fg-muted: var(--color-zinc-500);
+  --fg-accent: var(--color-zinc-900);
+  --fg-destructive: var(--color-zinc-50);
+
+  /* Border */
+  --border-default: var(--color-zinc-200);
+  --border-input: var(--color-zinc-200);
+
+  /* Ring */
+  --ring-default: var(--color-zinc-900);
+}
+
+/* ========================================
+   DARK MODE
+   ======================================== */
+
+.dark {
+  /* Background */
+  --bg-background: var(--color-zinc-950);
+  --bg-card: var(--color-zinc-950);
+  --bg-popover: var(--color-zinc-950);
+  --bg-primary: var(--color-zinc-50);
+  --bg-secondary: var(--color-zinc-800);
+  --bg-muted: var(--color-zinc-800);
+  --bg-accent: var(--color-zinc-800);
+  --bg-destructive: var(--color-red-900);
+
+  /* Foreground */
+  --fg-foreground: var(--color-zinc-50);
+  --fg-card: var(--color-zinc-50);
+  --fg-popover: var(--color-zinc-50);
+  --fg-primary: var(--color-zinc-900);
+  --fg-secondary: var(--color-zinc-50);
+  --fg-muted: var(--color-zinc-400);
+  --fg-accent: var(--color-zinc-50);
+  --fg-destructive: var(--color-zinc-50);
+
+  /* Border */
+  --border-default: var(--color-zinc-800);
+  --border-input: var(--color-zinc-800);
+
+  /* Ring */
+  --ring-default: var(--color-zinc-300);
+}
