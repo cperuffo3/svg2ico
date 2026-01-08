@@ -23,7 +23,6 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo clean && rimraf node_modules",
-    "init-project": "pnpm install && node scripts/init.mjs",
     "changeset": "changeset",
     "changeset:version": "changeset version"
   },
