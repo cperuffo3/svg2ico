@@ -5,20 +5,20 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/80">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-gradient-primary-from to-gradient-primary-to">
             <FontAwesomeIcon icon={faArrowRightArrowLeft} className="h-4 w-4 text-white" />
           </div>
-          <span className="text-2xl font-bold text-slate-900 dark:text-white">svg2ico</span>
+          <span className="text-2xl font-bold text-foreground">svg2ico</span>
         </a>
         <div className="flex items-center gap-2">
           <a
             href="https://github.com/cperuffo3/svg2ico"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="text-muted-foreground transition-colors hover:text-foreground"
           >
             <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
           </a>

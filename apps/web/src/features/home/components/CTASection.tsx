@@ -21,7 +21,7 @@ export function CTASection({ onGetStarted }: CTASectionProps) {
       </p>
       <Button
         onClick={handleClick}
-        className="h-auto rounded-lg bg-white px-8 py-4 text-base font-semibold text-blue-600 shadow-lg hover:bg-gray-50"
+        className="h-auto rounded-lg bg-white px-8 py-4 text-base font-semibold text-primary shadow-lg hover:bg-white/90"
       >
         Get Started Now
       </Button>

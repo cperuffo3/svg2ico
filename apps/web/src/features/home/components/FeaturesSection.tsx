@@ -18,7 +18,7 @@ const features = [
     icon: faStar,
     title: 'High Quality',
     description: 'Multi-resolution output optimized for Windows and macOS platforms.',
-    gradient: 'purple' as const,
+    gradient: 'accent' as const,
   },
 ];
 

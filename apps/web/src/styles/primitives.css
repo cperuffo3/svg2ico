@@ -1,72 +1,166 @@
 /**
  * Design System - Color Primitives
- * Raw color values organized by color family
- * These primitives feed into semantic tokens
+ * ================================
+ * Raw color values organized by color family.
+ * These primitives feed into semantic tokens in tokens.css.
+ *
+ * Scale: 50 (lightest) → 950 (darkest)
+ * Based on Tailwind CSS color palette for consistency.
  */
 
 :root {
   /* ========================================
-     ZINC
-     Neutral gray family (shadcn default)
+     NEUTRAL - Zinc
+     Primary neutral gray family
+     Use for: backgrounds, borders, text
      ======================================== */
-
-  --color-zinc-50: #fafafa;
-  --color-zinc-100: #f4f4f5;
-  --color-zinc-200: #e4e4e7;
-  --color-zinc-300: #d4d4d8;
-  --color-zinc-400: #a1a1aa;
-  --color-zinc-500: #71717a;
-  --color-zinc-600: #52525b;
-  --color-zinc-700: #3f3f46;
-  --color-zinc-800: #27272a;
-  --color-zinc-900: #18181b;
-  --color-zinc-950: #09090b;
+  --primitive-zinc-50: #fafafa;
+  --primitive-zinc-100: #f4f4f5;
+  --primitive-zinc-200: #e4e4e7;
+  --primitive-zinc-300: #d4d4d8;
+  --primitive-zinc-400: #a1a1aa;
+  --primitive-zinc-500: #71717a;
+  --primitive-zinc-600: #52525b;
+  --primitive-zinc-700: #3f3f46;
+  --primitive-zinc-800: #27272a;
+  --primitive-zinc-900: #18181b;
+  --primitive-zinc-950: #09090b;
 
   /* ========================================
-     RED
-     Destructive/error color family
+     BRAND - Blue
+     Primary brand color
+     Use for: primary actions, links, focus states
      ======================================== */
+  --primitive-blue-50: #eff6ff;
+  --primitive-blue-100: #dbeafe;
+  --primitive-blue-200: #bfdbfe;
+  --primitive-blue-300: #93c5fd;
+  --primitive-blue-400: #60a5fa;
+  --primitive-blue-500: #3b82f6;
+  --primitive-blue-600: #2563eb;
+  --primitive-blue-700: #1d4ed8;
+  --primitive-blue-800: #1e40af;
+  --primitive-blue-900: #1e3a8a;
+  --primitive-blue-950: #172554;
 
-  --color-red-50: #fef2f2;
-  --color-red-100: #fee2e2;
-  --color-red-200: #fecaca;
-  --color-red-300: #fca5a5;
-  --color-red-400: #f87171;
-  --color-red-500: #ef4444;
-  --color-red-600: #dc2626;
-  --color-red-700: #b91c1c;
-  --color-red-800: #991b1b;
-  --color-red-900: #7f1d1d;
-  --color-red-950: #450a0a;
+  /* ========================================
+     SUCCESS - Green (Emerald)
+     Positive states
+     Use for: success messages, confirmations, healthy status
+     ======================================== */
+  --primitive-green-50: #ecfdf5;
+  --primitive-green-100: #d1fae5;
+  --primitive-green-200: #a7f3d0;
+  --primitive-green-300: #6ee7b7;
+  --primitive-green-400: #34d399;
+  --primitive-green-500: #10b981;
+  --primitive-green-600: #059669;
+  --primitive-green-700: #047857;
+  --primitive-green-800: #065f46;
+  --primitive-green-900: #064e3b;
+  --primitive-green-950: #022c22;
+
+  /* ========================================
+     WARNING - Amber
+     Caution states
+     Use for: warnings, pending status, attention required
+     ======================================== */
+  --primitive-amber-50: #fffbeb;
+  --primitive-amber-100: #fef3c7;
+  --primitive-amber-200: #fde68a;
+  --primitive-amber-300: #fcd34d;
+  --primitive-amber-400: #fbbf24;
+  --primitive-amber-500: #f59e0b;
+  --primitive-amber-600: #d97706;
+  --primitive-amber-700: #b45309;
+  --primitive-amber-800: #92400e;
+  --primitive-amber-900: #78350f;
+  --primitive-amber-950: #451a03;
+
+  /* ========================================
+     DANGER - Red
+     Error/destructive states
+     Use for: errors, destructive actions, critical alerts
+     ======================================== */
+  --primitive-red-50: #fef2f2;
+  --primitive-red-100: #fee2e2;
+  --primitive-red-200: #fecaca;
+  --primitive-red-300: #fca5a5;
+  --primitive-red-400: #f87171;
+  --primitive-red-500: #ef4444;
+  --primitive-red-600: #dc2626;
+  --primitive-red-700: #b91c1c;
+  --primitive-red-800: #991b1b;
+  --primitive-red-900: #7f1d1d;
+  --primitive-red-950: #450a0a;
+
+  /* ========================================
+     INFO - Indigo
+     Informational states
+     Use for: info messages, tips, secondary highlights
+     ======================================== */
+  --primitive-indigo-50: #eef2ff;
+  --primitive-indigo-100: #e0e7ff;
+  --primitive-indigo-200: #c7d2fe;
+  --primitive-indigo-300: #a5b4fc;
+  --primitive-indigo-400: #818cf8;
+  --primitive-indigo-500: #6366f1;
+  --primitive-indigo-600: #4f46e5;
+  --primitive-indigo-700: #4338ca;
+  --primitive-indigo-800: #3730a3;
+  --primitive-indigo-900: #312e81;
+  --primitive-indigo-950: #1e1b4b;
+
+  /* ========================================
+     ACCENT - Violet
+     Accent/highlight color
+     Use for: special features, promotions, accents
+     ======================================== */
+  --primitive-violet-50: #f5f3ff;
+  --primitive-violet-100: #ede9fe;
+  --primitive-violet-200: #ddd6fe;
+  --primitive-violet-300: #c4b5fd;
+  --primitive-violet-400: #a78bfa;
+  --primitive-violet-500: #8b5cf6;
+  --primitive-violet-600: #7c3aed;
+  --primitive-violet-700: #6d28d9;
+  --primitive-violet-800: #5b21b6;
+  --primitive-violet-900: #4c1d95;
+  --primitive-violet-950: #2e1065;
 
   /* ========================================
      PURE
      True black and white
      ======================================== */
-
-  --color-white: #ffffff;
-  --color-black: #000000;
+  --primitive-white: #ffffff;
+  --primitive-black: #000000;
 
   /* ========================================
      ALPHA / TRANSPARENCY
      Opacity variants for overlays and backgrounds
      ======================================== */
 
-  /* Black alpha (for shadows and overlays) */
-  --color-black-alpha-5: rgba(0, 0, 0, 0.05);
-  --color-black-alpha-10: rgba(0, 0, 0, 0.1);
-  --color-black-alpha-20: rgba(0, 0, 0, 0.2);
-  --color-black-alpha-30: rgba(0, 0, 0, 0.3);
-  --color-black-alpha-50: rgba(0, 0, 0, 0.5);
-  --color-black-alpha-70: rgba(0, 0, 0, 0.7);
-  --color-black-alpha-90: rgba(0, 0, 0, 0.9);
+  /* Black alpha (for shadows, overlays, and dark mode adjustments) */
+  --primitive-black-alpha-5: rgba(0, 0, 0, 0.05);
+  --primitive-black-alpha-10: rgba(0, 0, 0, 0.1);
+  --primitive-black-alpha-20: rgba(0, 0, 0, 0.2);
+  --primitive-black-alpha-30: rgba(0, 0, 0, 0.3);
+  --primitive-black-alpha-40: rgba(0, 0, 0, 0.4);
+  --primitive-black-alpha-50: rgba(0, 0, 0, 0.5);
+  --primitive-black-alpha-60: rgba(0, 0, 0, 0.6);
+  --primitive-black-alpha-70: rgba(0, 0, 0, 0.7);
+  --primitive-black-alpha-80: rgba(0, 0, 0, 0.8);
+  --primitive-black-alpha-90: rgba(0, 0, 0, 0.9);
 
-  /* White alpha (for light overlays) */
-  --color-white-alpha-5: rgba(255, 255, 255, 0.05);
-  --color-white-alpha-10: rgba(255, 255, 255, 0.1);
-  --color-white-alpha-20: rgba(255, 255, 255, 0.2);
-  --color-white-alpha-30: rgba(255, 255, 255, 0.3);
-  --color-white-alpha-50: rgba(255, 255, 255, 0.5);
-  --color-white-alpha-70: rgba(255, 255, 255, 0.7);
-  --color-white-alpha-90: rgba(255, 255, 255, 0.9);
+  /* White alpha (for light overlays and dark mode surfaces) */
+  --primitive-white-alpha-5: rgba(255, 255, 255, 0.05);
+  --primitive-white-alpha-10: rgba(255, 255, 255, 0.1);
+  --primitive-white-alpha-20: rgba(255, 255, 255, 0.2);
+  --primitive-white-alpha-30: rgba(255, 255, 255, 0.3);
+  --primitive-white-alpha-40: rgba(255, 255, 255, 0.4);
+  --primitive-white-alpha-50: rgba(255, 255, 255, 0.5);
+  --primitive-white-alpha-60: rgba(255, 255, 255, 0.6);
+  --primitive-white-alpha-70: rgba(255, 255, 255, 0.7);
+  --primitive-white-alpha-80: rgba(255, 255, 255, 0.8);
+  --primitive-white-alpha-90: rgba(255, 255, 255, 0.9);
 }

@@ -12,7 +12,7 @@ import {
 
 export function HomePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       <main className="mx-auto flex max-w-7xl flex-col items-center gap-12 px-6 py-12">
         <HeroSection />

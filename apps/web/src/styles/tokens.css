@@ -1,7 +1,15 @@
 /**
  * Design System - Semantic Tokens
- * References color primitives with light/dark mode support
- * Import primitives.css before this file
+ * ================================
+ * References color primitives with light/dark mode support.
+ * Import primitives.css before this file.
+ *
+ * Token Categories:
+ * - Surface: backgrounds for containers/pages
+ * - Content: text and icon colors
+ * - Border: stroke colors
+ * - State: interactive state colors (success, warning, danger, info)
+ * - Brand: primary brand colors
  */
 
 /* ========================================
@@ -15,43 +23,99 @@
     'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
     'Segoe UI Symbol', 'Noto Color Emoji';
 
-  /* Radius */
+  /* Border Radius Scale */
+  --radius-xs: 0.25rem;
   --radius-sm: calc(var(--radius-lg) - 4px);
   --radius-md: calc(var(--radius-lg) - 2px);
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
 
   /* ========================================
      SHADCN/UI SEMANTIC COLORS
+     Core color tokens for shadcn components
      ======================================== */
 
-  --color-background: var(--bg-background);
-  --color-foreground: var(--fg-foreground);
+  /* Surface Colors */
+  --color-background: var(--surface-base);
+  --color-foreground: var(--content-base);
 
-  --color-card: var(--bg-card);
-  --color-card-foreground: var(--fg-card);
+  --color-card: var(--surface-card);
+  --color-card-foreground: var(--content-base);
 
-  --color-popover: var(--bg-popover);
-  --color-popover-foreground: var(--fg-popover);
+  --color-popover: var(--surface-elevated);
+  --color-popover-foreground: var(--content-base);
 
-  --color-primary: var(--bg-primary);
-  --color-primary-foreground: var(--fg-primary);
+  /* Primary (Brand) */
+  --color-primary: var(--brand-primary);
+  --color-primary-foreground: var(--brand-primary-content);
 
-  --color-secondary: var(--bg-secondary);
-  --color-secondary-foreground: var(--fg-secondary);
+  /* Secondary */
+  --color-secondary: var(--surface-secondary);
+  --color-secondary-foreground: var(--content-base);
 
-  --color-muted: var(--bg-muted);
-  --color-muted-foreground: var(--fg-muted);
+  /* Muted */
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--content-muted);
 
-  --color-accent: var(--bg-accent);
-  --color-accent-foreground: var(--fg-accent);
+  /* Accent */
+  --color-accent: var(--surface-accent);
+  --color-accent-foreground: var(--content-base);
 
-  --color-destructive: var(--bg-destructive);
-  --color-destructive-foreground: var(--fg-destructive);
+  /* Destructive */
+  --color-destructive: var(--state-danger);
+  --color-destructive-foreground: var(--state-danger-content);
 
+  /* Success */
+  --color-success: var(--state-success);
+  --color-success-foreground: var(--state-success-content);
+
+  /* Warning */
+  --color-warning: var(--state-warning);
+  --color-warning-foreground: var(--state-warning-content);
+
+  /* Info */
+  --color-info: var(--state-info);
+  --color-info-foreground: var(--state-info-content);
+
+  /* Borders & Inputs */
   --color-border: var(--border-default);
   --color-input: var(--border-input);
-  --color-ring: var(--ring-default);
+  --color-ring: var(--ring-focus);
+
+  /* Chart Colors (for data visualization) */
+  --color-chart-1: var(--primitive-blue-500);
+  --color-chart-2: var(--primitive-green-500);
+  --color-chart-3: var(--primitive-amber-500);
+  --color-chart-4: var(--primitive-violet-500);
+  --color-chart-5: var(--primitive-red-500);
+
+  /* ========================================
+     GRADIENT COLORS
+     For use with bg-gradient-to-* utilities
+     ======================================== */
+
+  /* Primary gradient (blue → indigo) */
+  --color-gradient-primary-from: var(--gradient-primary-from);
+  --color-gradient-primary-to: var(--gradient-primary-to);
+
+  /* Success gradient (green → teal) */
+  --color-gradient-success-from: var(--gradient-success-from);
+  --color-gradient-success-to: var(--gradient-success-to);
+
+  /* Accent gradient (violet → purple) */
+  --color-gradient-accent-from: var(--gradient-accent-from);
+  --color-gradient-accent-to: var(--gradient-accent-to);
+
+  /* ========================================
+     SECTION BACKGROUND COLORS
+     For colored section backgrounds
+     ======================================== */
+
+  --color-section-primary-from: var(--section-primary-from);
+  --color-section-primary-to: var(--section-primary-to);
+  --color-section-primary-border: var(--section-primary-border);
 }
 
 /* ========================================
@@ -59,32 +123,78 @@
    ======================================== */
 
 :root {
-  /* Background */
-  --bg-background: var(--color-white);
-  --bg-card: var(--color-white);
-  --bg-popover: var(--color-white);
-  --bg-primary: var(--color-zinc-900);
-  --bg-secondary: var(--color-zinc-100);
-  --bg-muted: var(--color-zinc-100);
-  --bg-accent: var(--color-zinc-100);
-  --bg-destructive: var(--color-red-500);
+  /* ---------- Surface ---------- */
+  --surface-base: var(--primitive-white);
+  --surface-card: var(--primitive-white);
+  --surface-elevated: var(--primitive-white);
+  --surface-secondary: var(--primitive-zinc-100);
+  --surface-muted: var(--primitive-zinc-100);
+  --surface-accent: var(--primitive-zinc-100);
+  --surface-overlay: var(--primitive-black-alpha-50);
 
-  /* Foreground */
-  --fg-foreground: var(--color-zinc-950);
-  --fg-card: var(--color-zinc-950);
-  --fg-popover: var(--color-zinc-950);
-  --fg-primary: var(--color-zinc-50);
-  --fg-secondary: var(--color-zinc-900);
-  --fg-muted: var(--color-zinc-500);
-  --fg-accent: var(--color-zinc-900);
-  --fg-destructive: var(--color-zinc-50);
+  /* ---------- Content ---------- */
+  --content-base: var(--primitive-zinc-950);
+  --content-secondary: var(--primitive-zinc-700);
+  --content-muted: var(--primitive-zinc-500);
+  --content-subtle: var(--primitive-zinc-400);
+  --content-inverted: var(--primitive-white);
 
-  /* Border */
-  --border-default: var(--color-zinc-200);
-  --border-input: var(--color-zinc-200);
+  /* ---------- Border ---------- */
+  --border-default: var(--primitive-zinc-200);
+  --border-input: var(--primitive-zinc-200);
+  --border-strong: var(--primitive-zinc-300);
+  --border-subtle: var(--primitive-zinc-100);
 
-  /* Ring */
-  --ring-default: var(--color-zinc-900);
+  /* ---------- Ring (Focus) ---------- */
+  --ring-focus: var(--primitive-blue-600);
+
+  /* ---------- Brand ---------- */
+  --brand-primary: var(--primitive-blue-600);
+  --brand-primary-hover: var(--primitive-blue-700);
+  --brand-primary-content: var(--primitive-white);
+  --brand-secondary: var(--primitive-indigo-600);
+  --brand-accent: var(--primitive-violet-500);
+
+  /* ---------- State: Success ---------- */
+  --state-success: var(--primitive-green-500);
+  --state-success-hover: var(--primitive-green-600);
+  --state-success-content: var(--primitive-white);
+  --state-success-muted: var(--primitive-green-50);
+  --state-success-border: var(--primitive-green-200);
+
+  /* ---------- State: Warning ---------- */
+  --state-warning: var(--primitive-amber-500);
+  --state-warning-hover: var(--primitive-amber-600);
+  --state-warning-content: var(--primitive-white);
+  --state-warning-muted: var(--primitive-amber-50);
+  --state-warning-border: var(--primitive-amber-200);
+
+  /* ---------- State: Danger ---------- */
+  --state-danger: var(--primitive-red-500);
+  --state-danger-hover: var(--primitive-red-600);
+  --state-danger-content: var(--primitive-white);
+  --state-danger-muted: var(--primitive-red-50);
+  --state-danger-border: var(--primitive-red-200);
+
+  /* ---------- State: Info ---------- */
+  --state-info: var(--primitive-blue-500);
+  --state-info-hover: var(--primitive-blue-600);
+  --state-info-content: var(--primitive-white);
+  --state-info-muted: var(--primitive-blue-50);
+  --state-info-border: var(--primitive-blue-200);
+
+  /* ---------- Gradients ---------- */
+  --gradient-primary-from: var(--primitive-blue-600);
+  --gradient-primary-to: var(--primitive-indigo-600);
+  --gradient-success-from: var(--primitive-green-500);
+  --gradient-success-to: var(--primitive-green-600);
+  --gradient-accent-from: var(--primitive-violet-500);
+  --gradient-accent-to: var(--primitive-violet-600);
+
+  /* ---------- Section Backgrounds ---------- */
+  --section-primary-from: var(--primitive-blue-50);
+  --section-primary-to: var(--primitive-indigo-50);
+  --section-primary-border: var(--primitive-blue-100);
 }
 
 /* ========================================
@@ -92,30 +202,76 @@
    ======================================== */
 
 .dark {
-  /* Background */
-  --bg-background: var(--color-zinc-950);
-  --bg-card: var(--color-zinc-950);
-  --bg-popover: var(--color-zinc-950);
-  --bg-primary: var(--color-zinc-50);
-  --bg-secondary: var(--color-zinc-800);
-  --bg-muted: var(--color-zinc-800);
-  --bg-accent: var(--color-zinc-800);
-  --bg-destructive: var(--color-red-900);
+  /* ---------- Surface ---------- */
+  --surface-base: var(--primitive-zinc-950);
+  --surface-card: var(--primitive-zinc-900);
+  --surface-elevated: var(--primitive-zinc-800);
+  --surface-secondary: var(--primitive-zinc-800);
+  --surface-muted: var(--primitive-zinc-800);
+  --surface-accent: var(--primitive-zinc-800);
+  --surface-overlay: var(--primitive-black-alpha-70);
 
-  /* Foreground */
-  --fg-foreground: var(--color-zinc-50);
-  --fg-card: var(--color-zinc-50);
-  --fg-popover: var(--color-zinc-50);
-  --fg-primary: var(--color-zinc-900);
-  --fg-secondary: var(--color-zinc-50);
-  --fg-muted: var(--color-zinc-400);
-  --fg-accent: var(--color-zinc-50);
-  --fg-destructive: var(--color-zinc-50);
+  /* ---------- Content ---------- */
+  --content-base: var(--primitive-zinc-50);
+  --content-secondary: var(--primitive-zinc-300);
+  --content-muted: var(--primitive-zinc-400);
+  --content-subtle: var(--primitive-zinc-500);
+  --content-inverted: var(--primitive-zinc-950);
 
-  /* Border */
-  --border-default: var(--color-zinc-800);
-  --border-input: var(--color-zinc-800);
+  /* ---------- Border ---------- */
+  --border-default: var(--primitive-zinc-800);
+  --border-input: var(--primitive-zinc-700);
+  --border-strong: var(--primitive-zinc-600);
+  --border-subtle: var(--primitive-zinc-800);
 
-  /* Ring */
-  --ring-default: var(--color-zinc-300);
+  /* ---------- Ring (Focus) ---------- */
+  --ring-focus: var(--primitive-blue-500);
+
+  /* ---------- Brand ---------- */
+  --brand-primary: var(--primitive-blue-500);
+  --brand-primary-hover: var(--primitive-blue-400);
+  --brand-primary-content: var(--primitive-white);
+  --brand-secondary: var(--primitive-indigo-500);
+  --brand-accent: var(--primitive-violet-400);
+
+  /* ---------- State: Success ---------- */
+  --state-success: var(--primitive-green-500);
+  --state-success-hover: var(--primitive-green-400);
+  --state-success-content: var(--primitive-white);
+  --state-success-muted: var(--primitive-green-950);
+  --state-success-border: var(--primitive-green-800);
+
+  /* ---------- State: Warning ---------- */
+  --state-warning: var(--primitive-amber-500);
+  --state-warning-hover: var(--primitive-amber-400);
+  --state-warning-content: var(--primitive-black);
+  --state-warning-muted: var(--primitive-amber-950);
+  --state-warning-border: var(--primitive-amber-800);
+
+  /* ---------- State: Danger ---------- */
+  --state-danger: var(--primitive-red-500);
+  --state-danger-hover: var(--primitive-red-400);
+  --state-danger-content: var(--primitive-white);
+  --state-danger-muted: var(--primitive-red-950);
+  --state-danger-border: var(--primitive-red-800);
+
+  /* ---------- State: Info ---------- */
+  --state-info: var(--primitive-blue-400);
+  --state-info-hover: var(--primitive-blue-300);
+  --state-info-content: var(--primitive-black);
+  --state-info-muted: var(--primitive-blue-950);
+  --state-info-border: var(--primitive-blue-800);
+
+  /* ---------- Gradients ---------- */
+  --gradient-primary-from: var(--primitive-blue-500);
+  --gradient-primary-to: var(--primitive-indigo-500);
+  --gradient-success-from: var(--primitive-green-500);
+  --gradient-success-to: var(--primitive-green-600);
+  --gradient-accent-from: var(--primitive-violet-400);
+  --gradient-accent-to: var(--primitive-violet-500);
+
+  /* ---------- Section Backgrounds ---------- */
+  --section-primary-from: var(--primitive-blue-950);
+  --section-primary-to: var(--primitive-indigo-950);
+  --section-primary-border: var(--primitive-blue-900);
 }
