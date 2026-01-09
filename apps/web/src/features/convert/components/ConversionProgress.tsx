@@ -160,10 +160,10 @@ export function ConversionProgress({
         <div className="mt-6 flex items-center justify-between border-t border-section-primary-border pt-4">
           <div className="flex items-center gap-2">
             <FontAwesomeIcon icon={faClock} className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              Estimated time:{' '}
-              <span className="font-semibold text-foreground">{estimatedTime} seconds</span>
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm text-muted-foreground">Estimated time:</span>
+              <span className="text-sm font-semibold text-foreground">{estimatedTime} seconds</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <FontAwesomeIcon icon={faShieldHalved} className="h-3.5 w-3.5 text-success" />

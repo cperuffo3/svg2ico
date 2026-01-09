@@ -107,10 +107,16 @@ export class WorkerPoolService implements OnModuleInit, OnModuleDestroy {
     this.processNextJob();
   }
 
-  private handleWorkerLog(level: 'log' | 'debug' | 'warn' | 'error', message: string): void {
+  private handleWorkerLog(
+    level: 'log' | 'debug' | 'verbose' | 'warn' | 'error',
+    message: string,
+  ): void {
     switch (level) {
       case 'debug':
         this.logger.debug(message);
+        break;
+      case 'verbose':
+        this.logger.verbose(message);
         break;
       case 'warn':
         this.logger.warn(message);
