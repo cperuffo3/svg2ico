@@ -55,7 +55,10 @@
       "WebSearch",
       "Bash(git merge-base:*)",
       "Bash(wait:*)",
-      "Bash(prettier \")"
+      "Bash(prettier:*)",
+      "Bash(pnpm --filter @svg2ico/api add:*)",
+      "Bash(pnpm --filter @svg2ico/api type-check)",
+      "Bash(pnpm db:generate:*)"
     ],
     "deny": [
       "Bash(git add:*)",
@@ -75,6 +78,6 @@
       "Bash(git clean:*)",
       "Bash(git rm:*)"
     ],
-    "ask": ["Bash(rm:*)"]
+    "ask": ["Bash(rm:*)", "Bash(pnpm approve-builds:*)"]
   }
 }

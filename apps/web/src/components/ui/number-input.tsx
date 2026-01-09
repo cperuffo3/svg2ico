@@ -1,14 +1,11 @@
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
-import { NumericFormat, NumericFormatProps } from "react-number-format";
-import { Button } from "./button";
-import { Input } from "./input";
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import { NumericFormat, NumericFormatProps } from 'react-number-format';
+import { Button } from './button';
+import { Input } from './input';
 
-export interface NumberInputProps extends Omit<
-  NumericFormatProps,
-  "value" | "onValueChange"
-> {
+export interface NumberInputProps extends Omit<NumericFormatProps, 'value' | 'onValueChange'> {
   stepper?: number;
   thousandSeparator?: string;
   placeholder?: string;
@@ -51,9 +48,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     const isControlled = controlledValue !== undefined;
 
     // Internal state only used for uncontrolled mode
-    const [internalValue, setInternalValue] = useState<number | undefined>(
-      defaultValue,
-    );
+    const [internalValue, setInternalValue] = useState<number | undefined>(defaultValue);
 
     // Use controlled value if provided, otherwise use internal state
     const value = isControlled ? controlledValue : internalValue;
@@ -70,48 +65,36 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     );
 
     const handleIncrement = useCallback(() => {
-      const newValue =
-        value === undefined
-          ? (stepper ?? 1)
-          : Math.min(value + (stepper ?? 1), max);
+      const newValue = value === undefined ? (stepper ?? 1) : Math.min(value + (stepper ?? 1), max);
       updateValue(newValue);
     }, [stepper, max, value, updateValue]);
 
     const handleDecrement = useCallback(() => {
       const newValue =
-        value === undefined
-          ? -(stepper ?? 1)
-          : Math.max(value - (stepper ?? 1), min);
+        value === undefined ? -(stepper ?? 1) : Math.max(value - (stepper ?? 1), min);
       updateValue(newValue);
     }, [stepper, min, value, updateValue]);
 
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (
-          document.activeElement ===
-          (combinedRef as React.RefObject<HTMLInputElement>).current
-        ) {
-          if (e.key === "ArrowUp") {
+        if (document.activeElement === (combinedRef as React.RefObject<HTMLInputElement>).current) {
+          if (e.key === 'ArrowUp') {
             handleIncrement();
-          } else if (e.key === "ArrowDown") {
+          } else if (e.key === 'ArrowDown') {
             handleDecrement();
           }
         }
       };
 
-      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener('keydown', handleKeyDown);
 
       return () => {
-        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener('keydown', handleKeyDown);
       };
     }, [handleIncrement, handleDecrement, combinedRef]);
 
-    const handleChange = (values: {
-      value: string;
-      floatValue: number | undefined;
-    }) => {
-      const newValue =
-        values.floatValue === undefined ? undefined : values.floatValue;
+    const handleChange = (values: { value: string; floatValue: number | undefined }) => {
+      const newValue = values.floatValue === undefined ? undefined : values.floatValue;
       updateValue(newValue);
     };
 

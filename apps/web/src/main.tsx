@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { ApiDocsPage, DashboardPage } from './features';
+import { ApiDocsPage, DashboardPage, HomePage } from './features';
 import './index.css';
 import { ErrorBoundaryProvider } from './providers';
 
@@ -21,7 +21,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/api-docs" element={<ApiDocsPage />} />
           </Routes>
         </BrowserRouter>
