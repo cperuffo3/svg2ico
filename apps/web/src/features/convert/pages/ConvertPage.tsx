@@ -40,13 +40,24 @@ function useIsSmallHeight() {
   return isSmallHeight;
 }
 
-const defaultSteps: ConversionStep[] = [
-  { id: 'validate', label: 'Validating SVG file', status: 'pending' },
-  { id: 'render', label: 'Rendering high-quality PNG', status: 'pending' },
-  { id: 'generate', label: 'Generating multi-resolution icon', status: 'pending' },
-  { id: 'optimize', label: 'Optimizing file size', status: 'pending' },
-  { id: 'prepare', label: 'Preparing download', status: 'pending' },
-];
+function getConversionSteps(format: OutputFormat): ConversionStep[] {
+  const formatLabels: Record<OutputFormat, string> = {
+    ico: 'ICO (16-256px)',
+    icns: 'ICNS (16-1024px)',
+    favicon: 'Favicon ICO',
+    all: 'ICO + ICNS bundle',
+  };
+
+  return [
+    { id: 'validate', label: 'Validating SVG file', status: 'pending' },
+    { id: 'render', label: `Rendering ${formatLabels[format]}`, status: 'pending' },
+    { id: 'generate', label: 'Generating multi-resolution icon', status: 'pending' },
+    { id: 'optimize', label: 'Optimizing file size', status: 'pending' },
+    { id: 'prepare', label: 'Preparing download', status: 'pending' },
+  ];
+}
+
+const defaultSteps: ConversionStep[] = getConversionSteps('ico');
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -103,7 +114,10 @@ export function ConvertPage() {
     setConversionState('converting');
     setProgress(0);
 
-    const stepsCopy = [...defaultSteps];
+    // Get format-specific steps
+    const formatSteps = getConversionSteps(options.outputFormat);
+    const stepsCopy = [...formatSteps];
+    setSteps(stepsCopy);
 
     const updateStep = (index: number, status: ConversionStep['status']) => {
       stepsCopy[index] = { ...stepsCopy[index], status };
@@ -122,14 +136,23 @@ export function ConvertPage() {
 
       const formData = new FormData();
       formData.append('file', uploadedFile.file);
-      formData.append('format', 'png'); // For now, we're generating PNG
+
+      // Map frontend format to backend format
+      const formatMap: Record<OutputFormat, 'ico' | 'icns' | 'both' | 'favicon'> = {
+        ico: 'ico',
+        icns: 'icns',
+        all: 'both',
+        favicon: 'favicon',
+      };
+      const apiFormat = formatMap[options.outputFormat];
+
+      formData.append('format', apiFormat);
       formData.append('scale', options.scale.toString());
       formData.append('cornerRadius', options.cornerRadius.toString());
       formData.append('backgroundRemovalMode', options.backgroundRemoval.mode);
       if (options.backgroundRemoval.mode === 'color' && options.backgroundRemoval.color) {
         formData.append('backgroundRemovalColor', options.backgroundRemoval.color);
       }
-      formData.append('outputSize', '512'); // 512px square PNG
 
       const response = await fetch('/api/v1/convert', {
         method: 'POST',
@@ -161,7 +184,13 @@ export function ConvertPage() {
 
       // Get filename from Content-Disposition header or generate one
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'icon.png';
+      const extensionMap: Record<OutputFormat, string> = {
+        ico: 'icon.ico',
+        icns: 'icon.icns',
+        favicon: 'favicon.ico',
+        all: 'icons.zip',
+      };
+      let filename = extensionMap[options.outputFormat];
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="([^"]+)"/);
         if (match) {

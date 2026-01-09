@@ -188,8 +188,10 @@ export class ConversionController {
 
   private parseFormat(format: string | undefined): OutputFormat {
     const normalized = (format || 'ico').toLowerCase();
-    if (!['ico', 'icns', 'both', 'png'].includes(normalized)) {
-      throw new BadRequestException('Invalid format. Must be "ico", "icns", "both", or "png"');
+    if (!['ico', 'icns', 'both', 'png', 'favicon'].includes(normalized)) {
+      throw new BadRequestException(
+        'Invalid format. Must be "ico", "icns", "both", "png", or "favicon"',
+      );
     }
     return normalized as OutputFormat;
   }
@@ -239,7 +241,11 @@ export class ConversionController {
     archive.pipe(res);
 
     for (const result of results) {
-      archive.append(result.buffer, { name: result.filename });
+      // Ensure buffer is a proper Buffer instance (worker thread transfer can convert to Uint8Array)
+      const buffer = Buffer.isBuffer(result.buffer)
+        ? result.buffer
+        : Buffer.from(result.buffer);
+      archive.append(buffer, { name: result.filename });
     }
 
     await archive.finalize();

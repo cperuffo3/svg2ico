@@ -1,5 +1,5 @@
+import { Icns, IcnsImage, type OSType } from '@fiahfy/icns';
 import { Resvg } from '@resvg/resvg-js';
-import png2icons from 'png2icons';
 import sharp from 'sharp';
 import { encode as encodeIco } from 'sharp-ico';
 import { parentPort, threadId } from 'worker_threads';
@@ -13,7 +13,33 @@ import type {
   WorkerResponse,
 } from './types/worker-messages.js';
 
-const ICO_SIZES = [16, 32, 48, 256];
+const ICO_SIZES = [16, 32, 48, 64, 128, 256];
+const FAVICON_SIZES = [16, 32, 48];
+
+// ICNS icon types mapped to their sizes
+// Each entry specifies the OSType and the pixel size for that icon
+// Standard (1x) icons: icp4, icp5, icp6, ic07, ic08, ic09, ic10
+// Retina (2x) icons: ic11 (16@2x=32), ic12 (32@2x=64), ic13 (128@2x=256), ic14 (256@2x=512)
+const ICNS_ICON_TYPES: Array<{ osType: OSType; size: number }> = [
+  // Standard resolution icons
+  { osType: 'icp4', size: 16 }, // 16x16
+  { osType: 'icp5', size: 32 }, // 32x32
+  { osType: 'icp6', size: 64 }, // 64x64 (unofficial but widely supported)
+  { osType: 'ic07', size: 128 }, // 128x128
+  { osType: 'ic08', size: 256 }, // 256x256
+  { osType: 'ic09', size: 512 }, // 512x512
+  { osType: 'ic10', size: 1024 }, // 1024x1024 (also used as 512@2x)
+  // Retina resolution icons (these use larger pixel data for @2x display)
+  { osType: 'ic11', size: 32 }, // 16x16@2x (32px actual)
+  { osType: 'ic12', size: 64 }, // 32x32@2x (64px actual)
+  { osType: 'ic13', size: 256 }, // 128x128@2x (256px actual)
+  { osType: 'ic14', size: 512 }, // 256x256@2x (512px actual)
+];
+
+// macOS icons need padding to match system icon appearance.
+// Apple's guidelines show icons should be ~80% of the canvas to look correct
+// alongside other system icons. 824/1024 ≈ 0.805 provides the correct visual balance.
+const MACOS_ICON_SCALE = 832 / 1024;
 
 if (!parentPort) {
   throw new Error('This file must be run as a worker thread');
@@ -176,19 +202,42 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
       );
       log('verbose', `ICNS output size: ${formatBytes(icnsResult.buffer.length)}`, jobId);
       results.push(icnsResult);
-    } else {
-      // Both formats
-      log('debug', `Converting to both ICO and ICNS`, jobId);
-      const [icoResult, icnsResult] = await Promise.all([
-        convertToIco(processedSvgBuffer, baseName, scale, cornerRadius, jobId),
-        convertToIcns(processedSvgBuffer, baseName, scale, cornerRadius, jobId),
-      ]);
-      log(
-        'verbose',
-        `ICO output size: ${formatBytes(icoResult.buffer.length)}, ICNS output size: ${formatBytes(icnsResult.buffer.length)}`,
+    } else if (format === 'favicon') {
+      log('debug', `Converting to Favicon (sizes: ${FAVICON_SIZES.join(', ')}px)`, jobId);
+      const faviconResult = await convertToFavicon(
+        processedSvgBuffer,
+        baseName,
+        scale,
+        cornerRadius,
         jobId,
       );
-      results.push(icoResult, icnsResult);
+      log('verbose', `Favicon output size: ${formatBytes(faviconResult.buffer.length)}`, jobId);
+      results.push(faviconResult);
+    } else {
+      // All formats: ICO, ICNS, Favicon, PNG (1024px), and original SVG
+      log('debug', `Converting to all formats (ICO, ICNS, Favicon, PNG, SVG)`, jobId);
+
+      const [icoResult, icnsResult, faviconResult, pngResult] = await Promise.all([
+        convertToIco(processedSvgBuffer, 'icon', scale, cornerRadius, jobId),
+        convertToIcns(processedSvgBuffer, 'icon', scale, cornerRadius, jobId),
+        convertToFavicon(processedSvgBuffer, 'favicon', scale, cornerRadius, jobId),
+        convertToPng(processedSvgBuffer, 'icon', scale, cornerRadius, 1024, jobId),
+      ]);
+
+      // Include original SVG
+      const svgResult = {
+        buffer: processedSvgBuffer,
+        filename: 'icon.svg',
+        mimeType: 'image/svg+xml',
+      };
+
+      log(
+        'verbose',
+        `All formats - ICO: ${formatBytes(icoResult.buffer.length)}, ICNS: ${formatBytes(icnsResult.buffer.length)}, Favicon: ${formatBytes(faviconResult.buffer.length)}, PNG: ${formatBytes(pngResult.buffer.length)}, SVG: ${formatBytes(svgResult.buffer.length)}`,
+        jobId,
+      );
+
+      results.push(icoResult, icnsResult, faviconResult, pngResult, svgResult);
     }
 
     const processingTimeMs = Date.now() - startTime;
@@ -300,7 +349,43 @@ async function convertToIco(
 }
 
 /**
+ * Convert SVG to Favicon ICO format (web favicon)
+ * Uses only 16, 32, and 48px sizes for web compatibility
+ */
+async function convertToFavicon(
+  svgBuffer: Buffer,
+  baseName: string,
+  scale: number,
+  cornerRadius: RoundnessValue,
+  jobId?: string,
+): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+  try {
+    log('verbose', `Rendering ${FAVICON_SIZES.length} PNG sizes for favicon`, jobId);
+    const pngBuffers = await renderSvgToPngs(svgBuffer, FAVICON_SIZES, scale, cornerRadius, jobId);
+
+    log('verbose', `Encoding favicon ICO file`, jobId);
+    const icoBuffer = encodeIco(pngBuffers);
+
+    return {
+      buffer: icoBuffer,
+      filename: 'favicon.ico',
+      mimeType: 'image/x-icon',
+    };
+  } catch (error) {
+    throw new Error(extractErrorMessage(error, 'Favicon conversion'));
+  }
+}
+
+/**
  * Convert SVG to ICNS format (macOS icon)
+ *
+ * macOS icons need automatic scaling to match system icon appearance.
+ * Apple's design guidelines expect icons to have padding around them so they
+ * visually align with other system icons. We apply MACOS_ICON_SCALE (~80.5%)
+ * to the user's scale factor to achieve this.
+ *
+ * This function renders PNGs at each required size directly from the SVG
+ * (rather than downsampling from a single large image) for optimal quality.
  */
 async function convertToIcns(
   svgBuffer: Buffer,
@@ -310,18 +395,48 @@ async function convertToIcns(
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
-    log('verbose', `Rendering 1024px PNG for ICNS`, jobId);
-    const [largestPng] = await renderSvgToPngs(svgBuffer, [1024], scale, cornerRadius, jobId);
+    // Apply macOS icon scaling to match system icon appearance
+    // User's 100% scale becomes ~80.5% to add proper padding
+    const macosAdjustedScale = scale * MACOS_ICON_SCALE;
 
-    log('verbose', `Encoding ICNS file with png2icons`, jobId);
-    const icnsBuffer = png2icons.createICNS(largestPng, png2icons.BICUBIC, 0);
+    // Get unique sizes needed (some OSTypes share the same pixel size)
+    const uniqueSizes = [...new Set(ICNS_ICON_TYPES.map((t) => t.size))].sort((a, b) => a - b);
 
-    if (!icnsBuffer) {
-      throw new Error('png2icons returned null - the PNG may be invalid or corrupted');
+    log(
+      'verbose',
+      `Rendering ICNS at ${uniqueSizes.length} unique sizes with macOS scaling (${scale}% → ${macosAdjustedScale.toFixed(1)}%)`,
+      jobId,
+    );
+
+    // Render all unique sizes with the macOS-adjusted scale
+    const pngBuffers = await renderSvgToPngs(
+      svgBuffer,
+      uniqueSizes,
+      macosAdjustedScale,
+      cornerRadius,
+      jobId,
+    );
+
+    // Create a map of size -> PNG buffer for easy lookup
+    const pngBySize = new Map<number, Buffer>();
+    uniqueSizes.forEach((size, index) => {
+      pngBySize.set(size, pngBuffers[index]);
+    });
+
+    // Build ICNS file with all icon types
+    log('verbose', `Encoding ICNS file with ${ICNS_ICON_TYPES.length} icon entries`, jobId);
+    const icns = new Icns();
+
+    for (const { osType, size } of ICNS_ICON_TYPES) {
+      const pngBuffer = pngBySize.get(size);
+      if (pngBuffer) {
+        const image = IcnsImage.fromPNG(pngBuffer, osType);
+        icns.append(image);
+      }
     }
 
     return {
-      buffer: Buffer.from(icnsBuffer),
+      buffer: Buffer.from(icns.data),
       filename: `${baseName}.icns`,
       mimeType: 'image/icns',
     };
@@ -418,7 +533,7 @@ async function renderSvgToPngs(
               right: paddingRight,
               background: { r: 0, g: 0, b: 0, alpha: 0 },
             })
-            .resize(size, size)
+            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions
             .png()
             .toBuffer();
         } else {
@@ -476,7 +591,7 @@ async function renderSvgToPngs(
               width: extractSize,
               height: extractSize,
             })
-            .resize(size, size)
+            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions
             .png()
             .toBuffer();
         }
@@ -492,9 +607,13 @@ async function renderSvgToPngs(
                 blend: 'dest-in',
               },
             ])
+            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions after composite
             .png()
             .toBuffer();
         }
+
+        // Final size verification - ensure output is exactly the target size
+        pngBuffer = await sharp(pngBuffer).resize(size, size, { fit: 'fill' }).png().toBuffer();
 
         return pngBuffer;
       } catch (error) {

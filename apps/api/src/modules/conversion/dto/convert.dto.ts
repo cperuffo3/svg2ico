@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export type OutputFormat = 'ico' | 'icns' | 'both' | 'png';
+export type OutputFormat = 'ico' | 'icns' | 'both' | 'png' | 'favicon';
 export type BackgroundRemovalMode = 'none' | 'color' | 'smart';
 export type RoundnessValue = 0 | 12.5 | 25 | 37.5 | 50;
 
 export class ConvertOptionsDto {
   @ApiProperty({
     description: 'Output format for the conversion',
-    enum: ['ico', 'icns', 'both', 'png'],
+    enum: ['ico', 'icns', 'both', 'png', 'favicon'],
     default: 'ico',
     example: 'ico',
   })
