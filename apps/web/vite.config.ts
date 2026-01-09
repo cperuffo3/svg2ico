@@ -20,5 +20,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
   },
 });

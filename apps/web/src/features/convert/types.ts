@@ -17,6 +17,20 @@ export interface BackgroundRemovalOption {
   color?: string; // Only used when mode is 'color'
 }
 
+// PNG background removal state (AI-powered, runs in browser)
+export type PngBackgroundRemovalState =
+  | 'idle'
+  | 'loading-model'
+  | 'processing'
+  | 'completed'
+  | 'error';
+
+export interface PngBackgroundRemovalProgress {
+  state: PngBackgroundRemovalState;
+  progress?: number; // 0-100
+  error?: string;
+}
+
 export interface ConversionOptions {
   scale: number;
   backgroundRemoval: BackgroundRemovalOption;

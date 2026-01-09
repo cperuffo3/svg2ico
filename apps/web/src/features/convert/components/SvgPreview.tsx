@@ -1,9 +1,14 @@
+import { Button } from '@/components/ui/button';
 import { RoundnessSelector } from '@/components/ui/roundness-selector';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useMemo, useState } from 'react';
-import type { BackgroundRemovalOption, RoundnessValue } from '../types';
+import type {
+  BackgroundRemovalOption,
+  PngBackgroundRemovalProgress,
+  RoundnessValue,
+} from '../types';
 import { processBackgroundRemoval } from '../utils/removeBackground';
 import { BackgroundRemovalSelector } from './BackgroundRemovalSelector';
 import { IconPreviewToolbar } from './IconPreviewToolbar';
@@ -85,6 +90,10 @@ interface SvgPreviewProps {
   onCornerRadiusChange: (cornerRadius: RoundnessValue) => void;
   onBackgroundRemovalChange: (backgroundRemoval: BackgroundRemovalOption) => void;
   onRemove: () => void;
+  // PNG background removal props
+  isPng?: boolean;
+  pngBackgroundRemovalProgress?: PngBackgroundRemovalProgress;
+  onPngBackgroundRemoval?: () => void;
 }
 
 export function SvgPreview({
@@ -98,6 +107,9 @@ export function SvgPreview({
   onCornerRadiusChange,
   onBackgroundRemovalChange,
   onRemove,
+  isPng: isPngProp,
+  pngBackgroundRemovalProgress,
+  onPngBackgroundRemoval,
 }: SvgPreviewProps) {
   // Calculate border radius in pixels based on percentage of canvas height (160px)
   const canvasSize = 160; // h-40 = 10rem = 160px
@@ -108,8 +120,14 @@ export function SvgPreview({
 
   const appBackgroundColor = previewBackgrounds[previewContext][previewTheme];
 
-  // Check if this is a PNG file (background removal not supported for PNG preview)
-  const isPng = svgDataUrl.startsWith('data:image/png');
+  // Check if this is a PNG file
+  const isPng = isPngProp ?? svgDataUrl.startsWith('data:image/png');
+
+  // Determine PNG background removal button state
+  const pngRemovalState = pngBackgroundRemovalProgress?.state ?? 'idle';
+  const isPngRemovalInProgress =
+    pngRemovalState === 'loading-model' || pngRemovalState === 'processing';
+  const isPngRemovalCompleted = pngRemovalState === 'completed';
 
   // Process SVG with background removal (only for SVG files)
   const processedSvgDataUrl = useMemo(() => {
@@ -238,11 +256,51 @@ export function SvgPreview({
             {/* Round corners selector */}
             <RoundnessSelector value={cornerRadius} onChange={onCornerRadiusChange} />
 
-            {/* Background removal selector */}
-            <BackgroundRemovalSelector
-              value={backgroundRemoval}
-              onChange={onBackgroundRemovalChange}
-            />
+            {/* Background removal - different UI for PNG vs SVG */}
+            {isPng ? (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-foreground">Remove Background</span>
+                <Button
+                  variant={isPngRemovalCompleted ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="w-full"
+                  onClick={onPngBackgroundRemoval}
+                  disabled={isPngRemovalInProgress || !onPngBackgroundRemoval}
+                >
+                  {isPngRemovalInProgress ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <span>
+                        {pngRemovalState === 'loading-model'
+                          ? `Loading model${pngBackgroundRemovalProgress?.progress ? ` (${pngBackgroundRemovalProgress.progress}%)` : '...'}`
+                          : `Processing${pngBackgroundRemovalProgress?.progress ? ` (${pngBackgroundRemovalProgress.progress}%)` : '...'}`}
+                      </span>
+                    </>
+                  ) : isPngRemovalCompleted ? (
+                    <>
+                      <FontAwesomeIcon icon={faWandMagicSparkles} className="mr-2 h-4 w-4" />
+                      <span>Background Removed</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faWandMagicSparkles} className="mr-2 h-4 w-4" />
+                      <span>Remove Background</span>
+                    </>
+                  )}
+                </Button>
+                {pngRemovalState === 'error' && pngBackgroundRemovalProgress?.error && (
+                  <p className="text-xs text-destructive">{pngBackgroundRemovalProgress.error}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Uses image processing to remove the background. Runs entirely in your browser.
+                </p>
+              </div>
+            ) : (
+              <BackgroundRemovalSelector
+                value={backgroundRemoval}
+                onChange={onBackgroundRemovalChange}
+              />
+            )}
           </div>
         </div>
       </div>

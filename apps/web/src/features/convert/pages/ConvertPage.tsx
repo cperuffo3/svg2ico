@@ -8,7 +8,7 @@ import {
   faTriangleExclamation,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ContextPreviewCard,
@@ -23,9 +23,11 @@ import {
   type ConversionState,
   type ConversionStep,
   type OutputFormat,
+  type PngBackgroundRemovalProgress,
   type RoundnessValue,
   type UploadedFile,
 } from '../types';
+import { removePngBackground } from '../utils/pngBackgroundRemoval';
 
 const SMALL_HEIGHT_THRESHOLD = 1100;
 
@@ -93,6 +95,12 @@ export function ConvertPage() {
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
 
+  // PNG background removal state
+  const [pngBackgroundRemovalProgress, setPngBackgroundRemovalProgress] =
+    useState<PngBackgroundRemovalProgress>({ state: 'idle' });
+  const [processedPngDataUrl, setProcessedPngDataUrl] = useState<string | null>(null);
+  const pngRemovalAbortRef = useRef<boolean>(false);
+
   const handleRemove = useCallback(() => {
     navigate('/');
   }, [navigate]);
@@ -115,6 +123,36 @@ export function ConvertPage() {
   const handleCornerRadiusChange = useCallback((cornerRadius: RoundnessValue) => {
     setOptions((prev) => ({ ...prev, cornerRadius }));
   }, []);
+
+  // Handle PNG background removal using AI
+  const handlePngBackgroundRemoval = useCallback(async () => {
+    if (!uploadedFile || uploadedFile.type !== 'png') return;
+
+    // If already completed, don't re-run
+    if (pngBackgroundRemovalProgress.state === 'completed') return;
+
+    pngRemovalAbortRef.current = false;
+
+    try {
+      const resultDataUrl = await removePngBackground(
+        uploadedFile.dataUrl,
+        (progress) => {
+          if (pngRemovalAbortRef.current) return;
+          setPngBackgroundRemovalProgress(progress);
+        },
+      );
+
+      if (pngRemovalAbortRef.current) return;
+
+      setProcessedPngDataUrl(resultDataUrl);
+      setPngBackgroundRemovalProgress({ state: 'completed', progress: 100 });
+    } catch (error) {
+      if (pngRemovalAbortRef.current) return;
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setPngBackgroundRemovalProgress({ state: 'error', error: errorMessage });
+    }
+  }, [uploadedFile, pngBackgroundRemovalProgress.state]);
 
   const convertFile = useCallback(async () => {
     if (!uploadedFile) return;
@@ -143,7 +181,16 @@ export function ConvertPage() {
       updateStep(1, 'in_progress');
 
       const formData = new FormData();
-      formData.append('file', uploadedFile.file);
+
+      // If PNG background removal was completed, send the processed file instead
+      let fileToSend: File | Blob = uploadedFile.file;
+      if (processedPngDataUrl && uploadedFile.type === 'png') {
+        // Convert processed data URL back to blob
+        const response = await fetch(processedPngDataUrl);
+        const blob = await response.blob();
+        fileToSend = new File([blob], uploadedFile.name, { type: 'image/png' });
+      }
+      formData.append('file', fileToSend);
 
       // Map frontend format to backend format
       const formatMap: Record<OutputFormat, 'ico' | 'icns' | 'both' | 'favicon'> = {
@@ -237,7 +284,7 @@ export function ConvertPage() {
         setSteps([...stepsCopy]);
       }
     }
-  }, [uploadedFile, options]);
+  }, [uploadedFile, options, processedPngDataUrl]);
 
   const handleConvert = useCallback(() => {
     if (conversionState === 'idle') {
@@ -298,7 +345,7 @@ export function ConvertPage() {
             <SvgPreview
               fileName={uploadedFile.name}
               fileSize={formatFileSize(uploadedFile.size)}
-              svgDataUrl={uploadedFile.dataUrl}
+              svgDataUrl={processedPngDataUrl ?? uploadedFile.dataUrl}
               scale={options.scale}
               cornerRadius={options.cornerRadius}
               backgroundRemoval={options.backgroundRemoval}
@@ -306,6 +353,9 @@ export function ConvertPage() {
               onCornerRadiusChange={handleCornerRadiusChange}
               onBackgroundRemovalChange={handleBackgroundRemovalChange}
               onRemove={handleRemove}
+              isPng={isPng}
+              pngBackgroundRemovalProgress={pngBackgroundRemovalProgress}
+              onPngBackgroundRemoval={handlePngBackgroundRemoval}
             />
 
             {/* PNG size limitation info - shown for PNG files */}
@@ -414,7 +464,7 @@ export function ConvertPage() {
         {/* Context Preview card */}
         <div className="flex-1 self-start">
           <ContextPreviewCard
-            svgDataUrl={uploadedFile.dataUrl}
+            svgDataUrl={processedPngDataUrl ?? uploadedFile.dataUrl}
             scale={debouncedScale}
             cornerRadius={debouncedCornerRadius}
             backgroundRemoval={options.backgroundRemoval}
