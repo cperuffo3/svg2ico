@@ -1,77 +1,24 @@
-# Svg2ico
+# SVG2ICO
 
-A barebones monorepo starter with NestJS, Vite, Turborepo, Tailwind v4, shadcn/ui, and Prisma.
-
-## Using This Template
-
-### Quick Start
-
-1. Clone or use this template from GitHub
-2. Install dependencies and initialize your project:
-
-```bash
-pnpm install
-pnpm init-project
-```
-
-3. Follow the interactive prompts to:
-   - Set your project name
-   - Choose your package naming convention
-   - Set initial version
-   - Optionally reset git history
-
-4. Start developing:
-
-```bash
-pnpm dev:full
-```
-
-### Updating From Upstream
-
-If you forked this template and want to pull in updates:
-
-1. Add the upstream remote (if not already added):
-
-   ```bash
-   git remote add upstream <template-repo-url>
-   ```
-
-2. Fetch and review upstream changes:
-
-   ```bash
-   git fetch upstream
-   ```
-
-3. Check the [CHANGELOG](./CHANGELOG.md) for migration notes and breaking changes
-
-4. Merge or cherry-pick changes as needed:
-   ```bash
-   git merge upstream/main
-   # or
-   git cherry-pick <commit-hash>
-   ```
+A web-based SVG to icon converter that transforms SVG files into platform-specific icon formats (ICO for Windows, ICNS for macOS).
 
 ![Screenshot](.documentation/images/screenshot.png)
 
+## Features
+
+- **Multi-Format Export**: Convert SVG to ICO (Windows), ICNS (macOS), or PNG
+- **Smart Background Removal**: Automatically detect and remove background shapes, or specify a color
+- **Customizable Output**: Adjust scale (50-200%) and corner radius (0-50%)
+- **Real-Time Preview**: See your icon in macOS/Windows contexts with dark/light themes
+- **Privacy-First**: Files processed in-memory only, zero storage
+- **Batch Export**: Download ICO + ICNS together as a ZIP
+
 ## Tech Stack
 
+- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS v4, shadcn/ui
+- **Backend**: NestJS 11, Prisma, PostgreSQL
+- **Image Processing**: Resvg (Rust-powered SVG rendering), Sharp
 - **Monorepo**: Turborepo + pnpm workspaces
-- **Backend**: NestJS with Prisma ORM
-- **Frontend**: Vite + React 19 + TypeScript
-- **Styling**: Tailwind CSS v4 + shadcn/ui
-- **Database**: PostgreSQL 16
-
-## Project Structure
-
-```
-svg2ico/
-├── apps/
-│   ├── api/          # NestJS backend
-│   └── web/          # Vite + React frontend
-├── packages/         # Shared packages (future)
-├── docker/           # Docker Compose configuration
-└── turbo.json        # Turborepo configuration
-```
 
 ## Prerequisites
 
@@ -90,110 +37,65 @@ pnpm install
 ### 2. Set up environment variables
 
 ```bash
-# Copy root environment file
 cp .env.example .env
-
-# Copy API environment file
 cp apps/api/.env.example apps/api/.env
 ```
 
-### 3. Start everything (Docker + Migrations + Apps)
+### 3. Start everything
 
 ```bash
 pnpm dev:full
 ```
 
-This single command will:
-
-1. Start Docker container (PostgreSQL)
-2. Wait for container to be healthy
-3. Run Prisma migrations
-4. Start the API and Web apps in development mode
-
-### Alternative: Manual Setup
-
-```bash
-# Start Docker containers
-pnpm docker:up
-
-# Generate Prisma client and run migrations
-pnpm db:generate
-pnpm db:migrate
-
-# Start development servers
-pnpm dev
-```
+This starts Docker (PostgreSQL), runs migrations, and launches both apps.
 
 ## Available Scripts
 
-### Root Level
-
-| Script                   | Description                                |
-| ------------------------ | ------------------------------------------ |
-| `pnpm dev`               | Start all apps in development mode         |
-| `pnpm dev:full`          | Start Docker + run migrations + start apps |
-| `pnpm build`             | Build all apps                             |
-| `pnpm docker:up`         | Start Docker containers                    |
-| `pnpm docker:down`       | Stop Docker containers                     |
-| `pnpm docker:logs`       | View Docker container logs                 |
-| `pnpm db:migrate`        | Run Prisma migrations                      |
-| `pnpm db:studio`         | Open Prisma Studio                         |
-| `pnpm db:generate`       | Generate Prisma client                     |
-| `pnpm init-project`      | Initialize project with your own name      |
-| `pnpm changeset`         | Create a new changeset                     |
-| `pnpm changeset:version` | Apply changesets and bump versions         |
+| Script           | Description                                |
+| ---------------- | ------------------------------------------ |
+| `pnpm dev`       | Start all apps in development mode         |
+| `pnpm dev:full`  | Start Docker + run migrations + start apps |
+| `pnpm build`     | Build all apps                             |
+| `pnpm docker:up` | Start Docker containers                    |
+| `pnpm docker:down` | Stop Docker containers                   |
+| `pnpm db:migrate` | Run Prisma migrations                     |
+| `pnpm db:studio` | Open Prisma Studio                         |
 
 ## URLs
 
-| Service       | URL                                 |
-| ------------- | ----------------------------------- |
-| Frontend      | http://localhost:5173               |
-| API           | http://localhost:3000/api/v1        |
-| Health Check  | http://localhost:3000/api/v1/health |
-| Prisma Studio | http://localhost:5555               |
+| Service       | URL                          |
+| ------------- | ---------------------------- |
+| Frontend      | http://localhost:5173        |
+| API           | http://localhost:3000/api/v1 |
+| Prisma Studio | http://localhost:5555        |
 
-## Adding shadcn/ui Components
+## Project Structure
 
-The frontend is pre-configured for shadcn/ui. To add more components:
-
-```bash
-cd apps/web
-npx shadcn@latest add [component-name]
+```
+apps/
+├── api/           # NestJS backend
+│   ├── src/modules/
+│   │   ├── conversion/   # SVG conversion logic
+│   │   ├── workers/      # Worker thread pool
+│   │   ├── rate-limit/   # IP-based rate limiting
+│   │   └── metrics/      # Conversion analytics
+│   └── prisma/
+└── web/           # React frontend
+    └── src/
+        ├── features/     # Page components (home, convert)
+        ├── components/   # shadcn/ui + custom components
+        └── api/          # API client
 ```
 
-## Docker Services
+## How It Works
 
-| Service    | Port | Description |
-| ---------- | ---- | ----------- |
-| PostgreSQL | 5432 | Database    |
+1. Upload an SVG file via drag-and-drop
+2. Adjust settings (scale, corner radius, background removal)
+3. Preview your icon in real-time
+4. Download as ICO, ICNS, PNG, or all formats as ZIP
 
-## Logging & Observability
-
-Both apps include a comprehensive logging and observability infrastructure:
-
-**Backend (NestJS):**
-
-- Structured JSON logging with OpenTelemetry integration
-- Automatic trace context propagation for distributed tracing
-- Custom metrics service for business KPIs and performance monitoring
-- Sensitive data sanitization (passwords, tokens, API keys)
-- BetterStack integration for centralized log aggregation
-
-**Frontend (React):**
-
-- Error boundary provider catching all unhandled React errors
-- Automatic error reporting to backend via `/api/v1/client-errors`
-- User-friendly error pages with error IDs for support reference
-- Conditional console logging (dev-only) with module prefixes
-
-Configure logging via environment variables:
-
-- `LOG_LEVEL` - error, warn, log, debug, verbose
-- `OTEL_ENABLED` - Enable/disable OpenTelemetry export
-- `OTEL_EXPORTER_OTLP_ENDPOINT` - BetterStack OTLP endpoint
-
-See [Logging Standards](.documentation/devdocs/Logging-Standards.md) for full documentation.
+The backend uses worker threads for parallel processing, with Resvg for fast SVG rendering and Sharp for image manipulation.
 
 ## License
 
-MIT test
+MIT
