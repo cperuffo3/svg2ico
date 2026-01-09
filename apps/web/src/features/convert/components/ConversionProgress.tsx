@@ -2,7 +2,27 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { faCheck, faClock, faShieldHalved, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from 'react';
 import type { ConversionState, ConversionStep } from '../types';
+
+const SMALL_HEIGHT_THRESHOLD = 1100;
+
+function useIsSmallHeight() {
+  const [isSmallHeight, setIsSmallHeight] = useState(
+    () => typeof window !== 'undefined' && window.innerHeight < SMALL_HEIGHT_THRESHOLD,
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallHeight(window.innerHeight < SMALL_HEIGHT_THRESHOLD);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return isSmallHeight;
+}
 
 interface ConversionProgressProps {
   state: ConversionState;
@@ -67,11 +87,17 @@ export function ConversionProgress({
   estimatedTime = 3,
   progress,
 }: ConversionProgressProps) {
+  const isSmallHeight = useIsSmallHeight();
+
   if (state === 'idle') {
     return null;
   }
 
   const isConverting = state === 'converting';
+  const isComplete = state === 'completed';
+
+  // Hide steps on small screens when conversion is complete
+  const shouldShowSteps = !(isSmallHeight && isComplete);
 
   return (
     <div className="rounded-xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to p-6">
@@ -104,45 +130,49 @@ export function ConversionProgress({
         <Progress value={progress} className="h-3 bg-card" indicatorClassName="bg-primary" />
       </div>
 
-      {/* Steps */}
-      <div className="mt-4 flex flex-col gap-3">
-        {steps.map((step) => (
-          <div
-            key={step.id}
-            className={cn('flex items-center gap-3', step.status === 'pending' && 'opacity-40')}
-          >
-            <StepIcon status={step.status} />
-            <div className="flex flex-1 flex-col">
-              <span
-                className={cn(
-                  'text-sm font-medium',
-                  step.status === 'pending' ? 'text-muted-foreground' : 'text-foreground',
-                )}
-              >
-                {step.label}
-              </span>
-              <StepStatus status={step.status} />
+      {/* Steps - hidden on small screens when complete */}
+      {shouldShowSteps && (
+        <div className="mt-4 flex flex-col gap-3">
+          {steps.map((step) => (
+            <div
+              key={step.id}
+              className={cn('flex items-center gap-3', step.status === 'pending' && 'opacity-40')}
+            >
+              <StepIcon status={step.status} />
+              <div className="flex flex-1 flex-col">
+                <span
+                  className={cn(
+                    'text-sm font-medium',
+                    step.status === 'pending' ? 'text-muted-foreground' : 'text-foreground',
+                  )}
+                >
+                  {step.label}
+                </span>
+                <StepStatus status={step.status} />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Footer */}
-      <div className="mt-6 flex items-center justify-between border-t border-section-primary-border pt-4">
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faClock} className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            Estimated time:{' '}
-            <span className="font-semibold text-foreground">{estimatedTime} seconds</span>
-          </span>
+      {/* Footer - hidden on small screens when complete */}
+      {shouldShowSteps && (
+        <div className="mt-6 flex items-center justify-between border-t border-section-primary-border pt-4">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faClock} className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Estimated time:{' '}
+              <span className="font-semibold text-foreground">{estimatedTime} seconds</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faShieldHalved} className="h-3.5 w-3.5 text-success" />
+            <span className="text-xs text-muted-foreground">
+              Your file is processed securely and never stored
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faShieldHalved} className="h-3.5 w-3.5 text-success" />
-          <span className="text-xs text-muted-foreground">
-            Your file is processed securely and never stored
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

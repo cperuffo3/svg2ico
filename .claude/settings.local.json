@@ -58,7 +58,9 @@
       "Bash(prettier:*)",
       "Bash(pnpm --filter @svg2ico/api add:*)",
       "Bash(pnpm --filter @svg2ico/api type-check)",
-      "Bash(pnpm db:generate:*)"
+      "Bash(pnpm db:generate:*)",
+      "Bash(tsc-alias:*)",
+      "Bash(npx tsc-alias:*)"
     ],
     "deny": [
       "Bash(git add:*)",

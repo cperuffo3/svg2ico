@@ -1,4 +1,6 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { useTheme } from '@/hooks/useTheme';
 import { useEffect, useMemo, useState } from 'react';
 import type { BackgroundRemovalOption, RoundnessValue } from '../types';
 import { processBackgroundRemoval } from '../utils/removeBackground';
@@ -122,14 +124,23 @@ function removeBlackPlaceholders(svgContent: string, patterns: string[]): string
   return result;
 }
 
+// Aspect ratios for skeleton placeholders (width/height from actual SVG files)
+const previewAspectRatios: Record<string, string> = {
+  chrome: 'aspect-[512/111]',
+  windows: 'aspect-[512/49]',
+  macos: 'aspect-[1408/541]',
+};
+
 export function ContextPreviewCard({
   svgDataUrl,
   scale,
   cornerRadius,
   backgroundRemoval,
 }: ContextPreviewCardProps) {
+  const { theme } = useTheme();
   const [loadedSvgs, setLoadedSvgs] = useState<Record<string, string>>({});
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(theme === 'dark');
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
   // Load all preview SVGs on mount
   useEffect(() => {
@@ -146,8 +157,42 @@ export function ContextPreviewCard({
     }
   }, []);
 
+  // Get SVG dimensions to calculate aspect ratio
+  const getSvgDimensions = (
+    svgString: string,
+  ): { width: number; height: number; aspectRatio: number } => {
+    // Try viewBox first
+    const viewBoxMatch = svgString.match(/viewBox=["']([^"']+)["']/i);
+    if (viewBoxMatch) {
+      const parts = viewBoxMatch[1].split(/[\s,]+/).map(Number);
+      if (parts.length >= 4) {
+        const width = parts[2];
+        const height = parts[3];
+        const largest = Math.max(width, height);
+        return {
+          width: width / largest,
+          height: height / largest,
+          aspectRatio: width / height,
+        };
+      }
+    }
+
+    // Fall back to width/height attributes
+    const widthMatch = svgString.match(/\bwidth=["']([^"']+)["']/i);
+    const heightMatch = svgString.match(/\bheight=["']([^"']+)["']/i);
+    const width = widthMatch ? parseFloat(widthMatch[1]) : 100;
+    const height = heightMatch ? parseFloat(heightMatch[1]) : 100;
+    const largest = Math.max(width, height);
+
+    return {
+      width: width / largest,
+      height: height / largest,
+      aspectRatio: width / height,
+    };
+  };
+
   // Process SVG with background removal
-  const processedIconSvg = useMemo(() => {
+  const processedIconData = useMemo(() => {
     if (!svgDataUrl) return null;
 
     try {
@@ -167,6 +212,9 @@ export function ContextPreviewCard({
         }
       }
 
+      // Get dimensions before any processing
+      const dimensions = getSvgDimensions(svgString);
+
       // Apply background removal if needed
       if (backgroundRemoval.mode !== 'none') {
         const result = processBackgroundRemoval(
@@ -177,7 +225,7 @@ export function ContextPreviewCard({
         svgString = result.svg;
       }
 
-      return svgString;
+      return { svg: svgString, dimensions };
     } catch (error) {
       console.error('Error processing SVG:', error);
       return null;
@@ -186,7 +234,18 @@ export function ContextPreviewCard({
 
   // Generate composite SVGs for each preview
   const compositeSvgs = useMemo(() => {
-    if (!processedIconSvg) return {};
+    if (!processedIconData) return {};
+
+    const { svg: processedIconSvg, dimensions } = processedIconData;
+
+    // Create a data URL from the processed SVG for use in the composite
+    let processedSvgDataUrl: string;
+    try {
+      processedSvgDataUrl = `data:image/svg+xml;base64,${btoa(processedIconSvg)}`;
+    } catch {
+      // If btoa fails (non-ASCII chars), use encodeURIComponent
+      processedSvgDataUrl = `data:image/svg+xml,${encodeURIComponent(processedIconSvg)}`;
+    }
 
     const result: Record<string, string> = {};
     const borderRadiusPercent = cornerRadius / 100;
@@ -198,8 +257,19 @@ export function ContextPreviewCard({
       // Build icon elements for each placement
       const iconElements = config.placements
         .map((placement) => {
+          // Scale based on the largest dimension of the SVG
+          // This ensures rectangular SVGs are scaled properly within the square placement
           const effectiveSize = placement.width * (scale / 100);
-          const offset = (placement.width - effectiveSize) / 2;
+
+          // Calculate actual icon dimensions maintaining aspect ratio
+          // dimensions.width and dimensions.height are normalized (largest = 1)
+          const iconWidth = effectiveSize * dimensions.width;
+          const iconHeight = effectiveSize * dimensions.height;
+
+          // Center the icon within the square placement area
+          const offsetX = (placement.width - iconWidth) / 2;
+          const offsetY = (placement.height - iconHeight) / 2;
+
           const borderRadius = borderRadiusPercent * placement.width;
 
           // Create a unique clip path ID for each placement
@@ -212,9 +282,9 @@ export function ContextPreviewCard({
             </clipPath>
           </defs>
           <g clip-path="url(#${clipId})">
-            <foreignObject x="${placement.x + offset}" y="${placement.y + offset}" width="${effectiveSize}" height="${effectiveSize}">
+            <foreignObject x="${placement.x + offsetX}" y="${placement.y + offsetY}" width="${iconWidth}" height="${iconHeight}">
               <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${svgDataUrl}" style="width:100%;height:100%;object-fit:contain;" />
+                <img src="${processedSvgDataUrl}" style="width:100%;height:100%;object-fit:contain;" />
               </div>
             </foreignObject>
           </g>
@@ -234,27 +304,14 @@ export function ContextPreviewCard({
     }
 
     return result;
-  }, [loadedSvgs, processedIconSvg, svgDataUrl, scale, cornerRadius]);
+  }, [loadedSvgs, processedIconData, scale, cornerRadius]);
 
   // Filter configs based on current theme
   const currentTheme = isDarkMode ? 'dark' : 'light';
   const filteredConfigs = previewConfigs.filter((config) => config.theme === currentTheme);
 
-  const hasAnyPreview = Object.keys(compositeSvgs).length > 0;
-
-  if (!hasAnyPreview) {
-    return (
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
-        {/* Card Header */}
-        <div className="flex h-16 items-center justify-center rounded-2xl bg-card-header px-6">
-          <h2 className="text-xl font-semibold text-foreground">Live Preview</h2>
-        </div>
-        <div className="flex flex-1 items-center justify-center p-6 text-muted-foreground">
-          Loading previews...
-        </div>
-      </div>
-    );
-  }
+  // Get the base name for aspect ratio lookup (e.g., 'chrome_light' -> 'chrome')
+  const getBaseName = (name: string) => name.split('_')[0];
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
@@ -272,17 +329,26 @@ export function ContextPreviewCard({
       <div className="flex flex-col gap-6 overflow-y-auto p-6">
         {filteredConfigs.map((config) => {
           const svgSrc = compositeSvgs[config.name];
-          if (!svgSrc) return null;
+          const isLoaded = svgSrc ? loadedImages[svgSrc] : false;
+          const aspectClass = previewAspectRatios[getBaseName(config.name)];
 
           return (
             <div key={config.name} className="flex flex-col gap-2">
-              <div className="overflow-hidden rounded-lg border border-border">
-                <img
-                  src={svgSrc}
-                  alt={`${config.label} preview`}
-                  className="h-auto w-full"
-                  style={{ display: 'block' }}
+              <div className="relative overflow-hidden rounded-lg border border-border">
+                {/* Skeleton with fade-out transition */}
+                <Skeleton
+                  className={`w-full ${aspectClass} transition-opacity duration-300 ${isLoaded ? 'opacity-0' : 'opacity-100'}`}
                 />
+                {/* Image with fade-in transition, positioned over skeleton */}
+                {svgSrc && (
+                  <img
+                    key={svgSrc}
+                    src={svgSrc}
+                    alt={`${config.label} preview`}
+                    className={`absolute inset-0 h-auto w-full transition-opacity duration-300 ${loadedImages[svgSrc] ? 'opacity-100' : 'opacity-0'}`}
+                    onLoad={() => setLoadedImages((prev) => ({ ...prev, [svgSrc]: true }))}
+                  />
+                )}
               </div>
               <p className="text-center text-xs text-muted-foreground">{config.label}</p>
             </div>

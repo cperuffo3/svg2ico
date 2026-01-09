@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Footer, Header } from '@/features/home/components';
+import { useDebouncedValue } from '@/hooks';
 import { faArrowsRotate, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ContextPreviewCard,
@@ -19,6 +20,25 @@ import type {
   RoundnessValue,
   UploadedFile,
 } from '../types';
+
+const SMALL_HEIGHT_THRESHOLD = 1100;
+
+function useIsSmallHeight() {
+  const [isSmallHeight, setIsSmallHeight] = useState(
+    () => typeof window !== 'undefined' && window.innerHeight < SMALL_HEIGHT_THRESHOLD,
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallHeight(window.innerHeight < SMALL_HEIGHT_THRESHOLD);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return isSmallHeight;
+}
 
 const defaultSteps: ConversionStep[] = [
   { id: 'validate', label: 'Validating SVG file', status: 'pending' },
@@ -45,6 +65,10 @@ export function ConvertPage() {
     cornerRadius: 0,
     outputFormat: 'icns',
   });
+
+  // Debounce scale and cornerRadius for the expensive ContextPreviewCard renders
+  const debouncedScale = useDebouncedValue(options.scale, 150);
+  const debouncedCornerRadius = useDebouncedValue(options.cornerRadius, 150);
 
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
@@ -73,35 +97,120 @@ export function ConvertPage() {
     setOptions((prev) => ({ ...prev, cornerRadius }));
   }, []);
 
-  const simulateConversion = useCallback(async () => {
+  const convertFile = useCallback(async () => {
+    if (!uploadedFile) return;
+
     setConversionState('converting');
     setProgress(0);
 
     const stepsCopy = [...defaultSteps];
 
-    for (let i = 0; i < stepsCopy.length; i++) {
-      // Mark current step as in progress
-      stepsCopy[i] = { ...stepsCopy[i], status: 'in_progress' };
+    const updateStep = (index: number, status: ConversionStep['status']) => {
+      stepsCopy[index] = { ...stepsCopy[index], status };
       setSteps([...stepsCopy]);
-      setProgress((i / stepsCopy.length) * 100);
+      setProgress(((index + (status === 'completed' ? 1 : 0.5)) / stepsCopy.length) * 100);
+    };
 
-      // Simulate processing time
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      // Step 1: Validate
+      updateStep(0, 'in_progress');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      updateStep(0, 'completed');
 
-      // Mark step as completed
-      stepsCopy[i] = { ...stepsCopy[i], status: 'completed' };
-      setSteps([...stepsCopy]);
+      // Step 2: Render - Prepare form data and send to API
+      updateStep(1, 'in_progress');
+
+      const formData = new FormData();
+      formData.append('file', uploadedFile.file);
+      formData.append('format', 'png'); // For now, we're generating PNG
+      formData.append('scale', options.scale.toString());
+      formData.append('cornerRadius', options.cornerRadius.toString());
+      formData.append('backgroundRemovalMode', options.backgroundRemoval.mode);
+      if (options.backgroundRemoval.mode === 'color' && options.backgroundRemoval.color) {
+        formData.append('backgroundRemovalColor', options.backgroundRemoval.color);
+      }
+      formData.append('outputSize', '512'); // 512px square PNG
+
+      const response = await fetch('/api/v1/convert', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Conversion failed: ${errorText}`);
+      }
+
+      updateStep(1, 'completed');
+
+      // Step 3: Generate
+      updateStep(2, 'in_progress');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      updateStep(2, 'completed');
+
+      // Step 4: Optimize
+      updateStep(3, 'in_progress');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      updateStep(3, 'completed');
+
+      // Step 5: Prepare download
+      updateStep(4, 'in_progress');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Get filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'icon.png';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      // Create download link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL
+      URL.revokeObjectURL(url);
+
+      updateStep(4, 'completed');
+      setProgress(100);
+      setConversionState('completed');
+    } catch (error) {
+      console.error('Conversion error:', error);
+      setConversionState('error');
+
+      // Mark current step as error
+      const currentStepIndex = stepsCopy.findIndex((s) => s.status === 'in_progress');
+      if (currentStepIndex !== -1) {
+        stepsCopy[currentStepIndex] = { ...stepsCopy[currentStepIndex], status: 'error' };
+        setSteps([...stepsCopy]);
+      }
     }
-
-    setProgress(100);
-    setConversionState('completed');
-  }, []);
+  }, [uploadedFile, options]);
 
   const handleConvert = useCallback(() => {
     if (conversionState === 'idle') {
-      simulateConversion();
+      convertFile();
     }
-  }, [conversionState, simulateConversion]);
+  }, [conversionState, convertFile]);
+
+  const handleConvertAgain = useCallback(() => {
+    // Reset conversion state but keep all parameters
+    setConversionState('idle');
+    setSteps([...defaultSteps]);
+    setProgress(0);
+  }, []);
+
+  // Detect small height screens for responsive layout
+  const isSmallHeight = useIsSmallHeight();
 
   // If no file was uploaded, redirect to home
   if (!uploadedFile) {
@@ -124,9 +233,11 @@ export function ConvertPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="mx-auto flex w-full max-w-375 flex-1 gap-6 px-6 py-12">
-        {/* Main card */}
-        <div className="w-145 shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+      <main className="mx-auto flex w-full max-w-365 flex-1 gap-6 px-6 py-12">
+        {/* Main card - wider on small height screens to reduce preview card height */}
+        <div
+          className={`h-fit shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-lg ${isSmallHeight ? 'w-160' : 'w-145'}`}
+        >
           {/* Card Header */}
           <div className="flex h-16 items-center justify-center rounded-2xl bg-card-header px-8">
             <h2 className="text-xl font-semibold text-foreground">Convert Your Icon</h2>
@@ -147,36 +258,47 @@ export function ConvertPage() {
               onRemove={handleRemove}
             />
 
-            {/* Output format selector */}
-            <OutputFormatSelector
-              selectedFormat={options.outputFormat}
-              onFormatChange={handleFormatChange}
-            />
+            {/* Output format selector - shown only when idle */}
+            {conversionState === 'idle' && (
+              <OutputFormatSelector
+                selectedFormat={options.outputFormat}
+                onFormatChange={handleFormatChange}
+              />
+            )}
 
-            {/* Conversion progress */}
-            <ConversionProgress
-              state={conversionState}
-              steps={steps}
-              progress={progress}
-              estimatedTime={3}
-            />
+            {/* Conversion progress - shown when converting or completed */}
+            {conversionState !== 'idle' && (
+              <ConversionProgress
+                state={conversionState}
+                steps={steps}
+                progress={progress}
+                estimatedTime={3}
+              />
+            )}
 
             {/* Convert button */}
-            <Button size="lg" className="w-full" onClick={handleConvert} disabled={isConverting}>
-              {isConverting ? (
-                <>
-                  <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4 animate-spin" />
-                  <span>Converting...</span>
-                </>
-              ) : conversionState === 'completed' ? (
-                <span>Download</span>
-              ) : (
-                <>
-                  <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
-                  <span>Convert</span>
-                </>
-              )}
-            </Button>
+            {conversionState === 'idle' && (
+              <Button size="lg" className="w-full" onClick={handleConvert}>
+                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
+                <span>Convert</span>
+              </Button>
+            )}
+
+            {/* Converting state - no button, progress shows status */}
+            {isConverting && (
+              <Button size="lg" className="w-full" disabled>
+                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4 animate-spin" />
+                <span>Converting...</span>
+              </Button>
+            )}
+
+            {/* Convert Again button - shown after completion or error */}
+            {(conversionState === 'completed' || conversionState === 'error') && (
+              <Button size="lg" className="w-full" onClick={handleConvertAgain}>
+                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
+                <span>{conversionState === 'error' ? 'Try Again' : 'Convert Again'}</span>
+              </Button>
+            )}
 
             {/* Security note */}
             <div className="flex items-center justify-center gap-1">
@@ -189,11 +311,11 @@ export function ConvertPage() {
         </div>
 
         {/* Context Preview card */}
-        <div className="flex-1">
+        <div className="flex-1 self-start">
           <ContextPreviewCard
             svgDataUrl={uploadedFile.dataUrl}
-            scale={options.scale}
-            cornerRadius={options.cornerRadius}
+            scale={debouncedScale}
+            cornerRadius={debouncedCornerRadius}
             backgroundRemoval={options.backgroundRemoval}
           />
         </div>

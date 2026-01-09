@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  FileTypeValidator,
   MaxFileSizeValidator,
   ParseFilePipe,
   Post,
@@ -18,8 +17,13 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import archiver from 'archiver';
 import { Request, Response } from 'express';
 import { MetricsService } from '../metrics/metrics.service.js';
-import { ConversionService } from './conversion.service.js';
-import { ConvertOptionsDto, type OutputFormat } from './dto/convert.dto.js';
+import { ConversionService, type ConversionOptions } from './conversion.service.js';
+import {
+  ConvertOptionsDto,
+  type BackgroundRemovalMode,
+  type OutputFormat,
+  type RoundnessValue,
+} from './dto/convert.dto.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -51,16 +55,39 @@ export class ConversionController {
         },
         format: {
           type: 'string',
-          enum: ['ico', 'icns', 'both'],
+          enum: ['ico', 'icns', 'both', 'png'],
           default: 'ico',
           description: 'Output format',
         },
         scale: {
           type: 'number',
           minimum: 50,
-          maximum: 100,
+          maximum: 200,
           default: 100,
-          description: 'Scale/padding factor (50-100%)',
+          description: 'Scale/padding factor (50-200%)',
+        },
+        cornerRadius: {
+          type: 'number',
+          enum: [0, 12.5, 25, 37.5, 50],
+          default: 0,
+          description: 'Corner radius as percentage (0, 12.5, 25, 37.5, or 50)',
+        },
+        backgroundRemovalMode: {
+          type: 'string',
+          enum: ['none', 'color', 'smart'],
+          default: 'none',
+          description: 'Background removal mode',
+        },
+        backgroundRemovalColor: {
+          type: 'string',
+          description: 'Color to remove (hex format, e.g., #ffffff)',
+        },
+        outputSize: {
+          type: 'number',
+          minimum: 16,
+          maximum: 1024,
+          default: 512,
+          description: 'Output size in pixels (for PNG format)',
         },
       },
     },
@@ -75,6 +102,9 @@ export class ConversionController {
       'image/icns': {
         schema: { type: 'string', format: 'binary' },
       },
+      'image/png': {
+        schema: { type: 'string', format: 'binary' },
+      },
       'application/zip': {
         schema: { type: 'string', format: 'binary' },
       },
@@ -86,10 +116,7 @@ export class ConversionController {
   async convert(
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE }),
-          new FileTypeValidator({ fileType: /(svg|xml)/ }),
-        ],
+        validators: [new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
       }),
     )
     file: Express.Multer.File,
@@ -102,7 +129,13 @@ export class ConversionController {
 
     // Parse and validate options
     const format = this.parseFormat(options.format);
-    const scale = this.parseScale(options.scale);
+    const conversionOptions: ConversionOptions = {
+      scale: this.parseScale(options.scale),
+      cornerRadius: this.parseCornerRadius(options.cornerRadius),
+      backgroundRemovalMode: this.parseBackgroundRemovalMode(options.backgroundRemovalMode),
+      backgroundRemovalColor: options.backgroundRemovalColor,
+      outputSize: this.parseOutputSize(options.outputSize),
+    };
 
     let success = false;
     let outputSizeBytes: number | undefined;
@@ -113,7 +146,7 @@ export class ConversionController {
         file.buffer,
         file.originalname,
         format,
-        scale,
+        conversionOptions,
       );
 
       const processingTimeMs = Date.now() - startTime;
@@ -155,16 +188,42 @@ export class ConversionController {
 
   private parseFormat(format: string | undefined): OutputFormat {
     const normalized = (format || 'ico').toLowerCase();
-    if (!['ico', 'icns', 'both'].includes(normalized)) {
-      throw new BadRequestException('Invalid format. Must be "ico", "icns", or "both"');
+    if (!['ico', 'icns', 'both', 'png'].includes(normalized)) {
+      throw new BadRequestException('Invalid format. Must be "ico", "icns", "both", or "png"');
     }
     return normalized as OutputFormat;
   }
 
   private parseScale(scale: string | number | undefined): number {
-    const parsed = typeof scale === 'string' ? parseInt(scale, 10) : (scale ?? 100);
-    if (isNaN(parsed) || parsed < 50 || parsed > 100) {
-      throw new BadRequestException('Scale must be between 50 and 100');
+    const parsed = typeof scale === 'string' ? parseFloat(scale) : (scale ?? 100);
+    if (isNaN(parsed) || parsed < 50 || parsed > 200) {
+      throw new BadRequestException('Scale must be between 50 and 200');
+    }
+    return parsed;
+  }
+
+  private parseCornerRadius(cornerRadius: string | number | undefined): RoundnessValue {
+    const parsed =
+      typeof cornerRadius === 'string' ? parseFloat(cornerRadius) : (cornerRadius ?? 0);
+    const validValues: RoundnessValue[] = [0, 12.5, 25, 37.5, 50];
+    if (!validValues.includes(parsed as RoundnessValue)) {
+      throw new BadRequestException('Corner radius must be 0, 12.5, 25, 37.5, or 50');
+    }
+    return parsed as RoundnessValue;
+  }
+
+  private parseBackgroundRemovalMode(mode: string | undefined): BackgroundRemovalMode {
+    const normalized = (mode || 'none').toLowerCase();
+    if (!['none', 'color', 'smart'].includes(normalized)) {
+      throw new BadRequestException('Background removal mode must be "none", "color", or "smart"');
+    }
+    return normalized as BackgroundRemovalMode;
+  }
+
+  private parseOutputSize(size: string | number | undefined): number {
+    const parsed = typeof size === 'string' ? parseInt(size, 10) : (size ?? 512);
+    if (isNaN(parsed) || parsed < 16 || parsed > 1024) {
+      throw new BadRequestException('Output size must be between 16 and 1024');
     }
     return parsed;
   }

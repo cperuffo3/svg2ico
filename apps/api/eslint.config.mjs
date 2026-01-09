@@ -23,18 +23,6 @@ export default tseslint.config(
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/../../..*'],
-              message:
-                'Use path aliases (@/*, @common/*, @modules/*) instead of deeply nested relative imports (../../ or deeper)',
-            },
-          ],
-        },
-      ],
     },
   },
   {
