@@ -39,8 +39,9 @@ export class ConversionController {
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
-    summary: 'Convert SVG to ICO/ICNS',
-    description: 'Upload an SVG file and convert it to ICO, ICNS, or both formats',
+    summary: 'Convert SVG or PNG to ICO/ICNS',
+    description:
+      'Upload an SVG or PNG file and convert it to ICO, ICNS, or both formats. PNG files will only generate sizes up to the source dimensions (no upscaling).',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -51,7 +52,7 @@ export class ConversionController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'SVG file to convert',
+          description: 'SVG or PNG file to convert',
         },
         format: {
           type: 'string',
@@ -88,6 +89,14 @@ export class ConversionController {
           maximum: 1024,
           default: 512,
           description: 'Output size in pixels (for PNG format)',
+        },
+        sourceWidth: {
+          type: 'number',
+          description: 'Source image width in pixels (for PNG input)',
+        },
+        sourceHeight: {
+          type: 'number',
+          description: 'Source image height in pixels (for PNG input)',
         },
       },
     },
@@ -129,12 +138,14 @@ export class ConversionController {
 
     // Parse and validate options
     const format = this.parseFormat(options.format);
+    const sourceDimensions = this.parseSourceDimensions(options.sourceWidth, options.sourceHeight);
     const conversionOptions: ConversionOptions = {
       scale: this.parseScale(options.scale),
       cornerRadius: this.parseCornerRadius(options.cornerRadius),
       backgroundRemovalMode: this.parseBackgroundRemovalMode(options.backgroundRemovalMode),
       backgroundRemovalColor: options.backgroundRemovalColor,
       outputSize: this.parseOutputSize(options.outputSize),
+      sourceDimensions,
     };
 
     let success = false;
@@ -169,10 +180,11 @@ export class ConversionController {
     } finally {
       // Log metrics asynchronously
       const processingTimeMs = Date.now() - startTime;
+      const inputFormat = file.originalname.toLowerCase().endsWith('.png') ? 'png' : 'svg';
       this.metricsService
         .logConversion({
           ipAddress,
-          inputFormat: 'svg',
+          inputFormat,
           outputFormat: format,
           inputSizeBytes: file.size,
           outputSizeBytes,
@@ -230,6 +242,21 @@ export class ConversionController {
     return parsed;
   }
 
+  private parseSourceDimensions(
+    width: string | number | undefined,
+    height: string | number | undefined,
+  ): { width: number; height: number } | undefined {
+    if (width === undefined || height === undefined) {
+      return undefined;
+    }
+    const parsedWidth = typeof width === 'string' ? parseInt(width, 10) : width;
+    const parsedHeight = typeof height === 'string' ? parseInt(height, 10) : height;
+    if (isNaN(parsedWidth) || isNaN(parsedHeight) || parsedWidth <= 0 || parsedHeight <= 0) {
+      return undefined;
+    }
+    return { width: parsedWidth, height: parsedHeight };
+  }
+
   private async sendAsZip(
     res: Response,
     results: { buffer: Buffer; filename: string }[],
@@ -242,9 +269,7 @@ export class ConversionController {
 
     for (const result of results) {
       // Ensure buffer is a proper Buffer instance (worker thread transfer can convert to Uint8Array)
-      const buffer = Buffer.isBuffer(result.buffer)
-        ? result.buffer
-        : Buffer.from(result.buffer);
+      const buffer = Buffer.isBuffer(result.buffer) ? result.buffer : Buffer.from(result.buffer);
       archive.append(buffer, { name: result.filename });
     }
 

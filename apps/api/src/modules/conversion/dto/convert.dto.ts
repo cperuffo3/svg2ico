@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export type OutputFormat = 'ico' | 'icns' | 'both' | 'png' | 'favicon';
 export type BackgroundRemovalMode = 'none' | 'color' | 'smart';
 export type RoundnessValue = 0 | 12.5 | 25 | 37.5 | 50;
+export type SourceFileType = 'svg' | 'png';
 
 export class ConvertOptionsDto {
   @ApiProperty({
@@ -53,6 +54,20 @@ export class ConvertOptionsDto {
     example: 512,
   })
   outputSize: number = 512;
+
+  @ApiProperty({
+    description: 'Source image width in pixels (only for PNG input)',
+    required: false,
+    example: 1024,
+  })
+  sourceWidth?: number;
+
+  @ApiProperty({
+    description: 'Source image height in pixels (only for PNG input)',
+    required: false,
+    example: 1024,
+  })
+  sourceHeight?: number;
 }
 
 export class ConversionResultDto {

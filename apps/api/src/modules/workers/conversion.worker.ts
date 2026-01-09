@@ -3,11 +3,12 @@ import { Resvg } from '@resvg/resvg-js';
 import sharp from 'sharp';
 import { encode as encodeIco } from 'sharp-ico';
 import { parentPort, threadId } from 'worker_threads';
-import type { RoundnessValue } from '../conversion/dto/convert.dto.js';
+import type { RoundnessValue, SourceFileType } from '../conversion/dto/convert.dto.js';
 import { processSvg } from '../conversion/svg-processor.js';
 import type {
   ConversionJobData,
   ConversionJobResult,
+  SourceDimensions,
   WorkerLogLevel,
   WorkerMessage,
   WorkerResponse,
@@ -40,6 +41,16 @@ const ICNS_ICON_TYPES: Array<{ osType: OSType; size: number }> = [
 // Apple's guidelines show icons should be ~80% of the canvas to look correct
 // alongside other system icons. 824/1024 ≈ 0.805 provides the correct visual balance.
 const MACOS_ICON_SCALE = 832 / 1024;
+
+/**
+ * Context for image conversion - can be either SVG or PNG source
+ */
+interface ConversionContext {
+  svgBuffer: Buffer | null;
+  pngBuffer: Buffer | null;
+  sourceType: SourceFileType;
+  sourceDimensions: SourceDimensions | undefined;
+}
 
 if (!parentPort) {
   throw new Error('This file must be run as a worker thread');
@@ -100,78 +111,134 @@ function extractErrorMessage(error: unknown, context: string): string {
 }
 
 /**
+ * Filter sizes based on source dimensions (for PNG input).
+ * We never upscale PNG images to avoid quality degradation.
+ */
+function filterSizesForSource(
+  sizes: number[],
+  sourceDimensions: SourceDimensions | undefined,
+  jobId?: string,
+): number[] {
+  if (!sourceDimensions) {
+    return sizes; // SVG can generate any size
+  }
+  const maxSourceSize = Math.min(sourceDimensions.width, sourceDimensions.height);
+  const filteredSizes = sizes.filter((size) => size <= maxSourceSize);
+
+  if (filteredSizes.length < sizes.length) {
+    const excludedSizes = sizes.filter((size) => size > maxSourceSize);
+    log(
+      'log',
+      `Excluding sizes [${excludedSizes.join(', ')}]px (source is ${maxSourceSize}px, no upscaling)`,
+      jobId,
+    );
+  }
+
+  return filteredSizes;
+}
+
+/**
  * Main job processing function
  */
 async function processJob(data: ConversionJobData): Promise<ConversionJobResult> {
   const startTime = Date.now();
   const {
     jobId,
+    sourceType,
     originalFilename,
     format,
     scale,
     cornerRadius,
     backgroundRemovalMode,
     outputSize,
+    sourceDimensions,
   } = data;
 
-  log('log', `Starting conversion: ${originalFilename} -> ${format}`, jobId);
+  log('log', `Starting conversion: ${originalFilename} (${sourceType}) -> ${format}`, jobId);
   log(
     'debug',
     `Options: scale=${scale}%, cornerRadius=${cornerRadius}%, bgRemoval=${backgroundRemovalMode}, outputSize=${outputSize}px`,
     jobId,
   );
+  if (sourceDimensions) {
+    log(
+      'debug',
+      `Source dimensions: ${sourceDimensions.width}x${sourceDimensions.height}px`,
+      jobId,
+    );
+  }
 
   try {
     // Buffer gets serialized to Uint8Array when passed through postMessage
     // Convert it back to a proper Buffer
-    const svgBuffer = Buffer.from(data.svgBuffer);
-    const inputSize = svgBuffer.length;
-    log('verbose', `Input SVG size: ${formatBytes(inputSize)}`, jobId);
+    const inputBuffer = Buffer.from(data.inputBuffer);
+    const inputSize = inputBuffer.length;
+    log('verbose', `Input ${sourceType.toUpperCase()} size: ${formatBytes(inputSize)}`, jobId);
 
-    const svgString = svgBuffer.toString('utf-8');
+    let processedSvgBuffer: Buffer | null = null;
+    let pngSourceBuffer: Buffer | null = null;
+    let baseName: string;
 
-    // Validate SVG content
-    if (!isValidSvg(svgString)) {
-      const preview = svgString.substring(0, 100).replace(/\s+/g, ' ');
-      log('warn', `Invalid SVG content. Preview: "${preview}..."`, jobId);
-      log('error', `Validation failed: File does not appear to be a valid SVG`, jobId);
-      return {
+    if (sourceType === 'svg') {
+      const svgString = inputBuffer.toString('utf-8');
+
+      // Validate SVG content
+      if (!isValidSvg(svgString)) {
+        const preview = svgString.substring(0, 100).replace(/\s+/g, ' ');
+        log('warn', `Invalid SVG content. Preview: "${preview}..."`, jobId);
+        log('error', `Validation failed: File does not appear to be a valid SVG`, jobId);
+        return {
+          jobId,
+          success: false,
+          error:
+            'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+          processingTimeMs: Date.now() - startTime,
+        };
+      }
+
+      log('verbose', `SVG validation passed`, jobId);
+
+      // Get and log SVG dimensions
+      const dimensions = getSvgDimensions(svgString);
+      log('debug', `SVG dimensions: ${dimensions.width}x${dimensions.height}`, jobId);
+
+      // Process SVG with background removal
+      log(
+        'verbose',
+        `Applying SVG preprocessing (backgroundRemoval: ${backgroundRemovalMode})`,
         jobId,
-        success: false,
-        error:
-          'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
-        processingTimeMs: Date.now() - startTime,
-      };
+      );
+      const processedSvg = processSvg(svgString, {
+        backgroundRemovalMode: data.backgroundRemovalMode,
+        backgroundRemovalColor: data.backgroundRemovalColor,
+        cornerRadius: 0, // Skip SVG-level corner radius, apply at PNG level
+      });
+      processedSvgBuffer = Buffer.from(processedSvg, 'utf-8');
+      log('verbose', `SVG preprocessing complete`, jobId);
+
+      baseName = originalFilename.replace(/\.svg$/i, '');
+    } else {
+      // PNG source
+      pngSourceBuffer = inputBuffer;
+      baseName = originalFilename.replace(/\.png$/i, '');
+      log('verbose', `PNG source ready for conversion`, jobId);
     }
 
-    log('verbose', `SVG validation passed`, jobId);
-
-    // Get and log SVG dimensions
-    const dimensions = getSvgDimensions(svgString);
-    log('debug', `SVG dimensions: ${dimensions.width}x${dimensions.height}`, jobId);
-
-    // Process SVG with background removal
-    log(
-      'verbose',
-      `Applying SVG preprocessing (backgroundRemoval: ${backgroundRemovalMode})`,
-      jobId,
-    );
-    const processedSvg = processSvg(svgString, {
-      backgroundRemovalMode: data.backgroundRemovalMode,
-      backgroundRemovalColor: data.backgroundRemovalColor,
-      cornerRadius: 0, // Skip SVG-level corner radius, apply at PNG level
-    });
-    const processedSvgBuffer = Buffer.from(processedSvg, 'utf-8');
-    log('verbose', `SVG preprocessing complete`, jobId);
-
-    const baseName = originalFilename.replace(/\.svg$/i, '');
     const results: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+
+    // Prepare conversion context - either SVG buffer or PNG buffer with source dimensions
+    const conversionContext = {
+      svgBuffer: processedSvgBuffer,
+      pngBuffer: pngSourceBuffer,
+      sourceType,
+      sourceDimensions,
+    };
 
     // Convert based on format
     if (format === 'png') {
       log('debug', `Converting to PNG (${outputSize}x${outputSize}px)`, jobId);
       const pngResult = await convertToPng(
-        processedSvgBuffer,
+        conversionContext,
         baseName,
         scale,
         cornerRadius,
@@ -181,63 +248,114 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
       log('verbose', `PNG output size: ${formatBytes(pngResult.buffer.length)}`, jobId);
       results.push(pngResult);
     } else if (format === 'ico') {
-      log('debug', `Converting to ICO (sizes: ${ICO_SIZES.join(', ')}px)`, jobId);
+      const availableSizes = filterSizesForSource(ICO_SIZES, sourceDimensions, jobId);
+      if (availableSizes.length === 0) {
+        throw new Error(
+          `Source image is too small. ICO requires at least ${Math.min(...ICO_SIZES)}px but source is ${Math.min(sourceDimensions?.width ?? 0, sourceDimensions?.height ?? 0)}px.`,
+        );
+      }
+      log('debug', `Converting to ICO (sizes: ${availableSizes.join(', ')}px)`, jobId);
       const icoResult = await convertToIco(
-        processedSvgBuffer,
+        conversionContext,
         baseName,
         scale,
         cornerRadius,
+        availableSizes,
         jobId,
       );
       log('verbose', `ICO output size: ${formatBytes(icoResult.buffer.length)}`, jobId);
       results.push(icoResult);
     } else if (format === 'icns') {
-      log('debug', `Converting to ICNS (1024px base)`, jobId);
+      const uniqueIcnsSizes = [...new Set(ICNS_ICON_TYPES.map((t) => t.size))].sort(
+        (a, b) => a - b,
+      );
+      const availableSizes = filterSizesForSource(uniqueIcnsSizes, sourceDimensions, jobId);
+      if (availableSizes.length === 0) {
+        throw new Error(
+          `Source image is too small. ICNS requires at least ${Math.min(...uniqueIcnsSizes)}px but source is ${Math.min(sourceDimensions?.width ?? 0, sourceDimensions?.height ?? 0)}px.`,
+        );
+      }
+      log('debug', `Converting to ICNS (sizes: ${availableSizes.join(', ')}px)`, jobId);
       const icnsResult = await convertToIcns(
-        processedSvgBuffer,
+        conversionContext,
         baseName,
         scale,
         cornerRadius,
+        availableSizes,
         jobId,
       );
       log('verbose', `ICNS output size: ${formatBytes(icnsResult.buffer.length)}`, jobId);
       results.push(icnsResult);
     } else if (format === 'favicon') {
-      log('debug', `Converting to Favicon (sizes: ${FAVICON_SIZES.join(', ')}px)`, jobId);
+      const availableSizes = filterSizesForSource(FAVICON_SIZES, sourceDimensions, jobId);
+      if (availableSizes.length === 0) {
+        throw new Error(
+          `Source image is too small. Favicon requires at least ${Math.min(...FAVICON_SIZES)}px but source is ${Math.min(sourceDimensions?.width ?? 0, sourceDimensions?.height ?? 0)}px.`,
+        );
+      }
+      log('debug', `Converting to Favicon (sizes: ${availableSizes.join(', ')}px)`, jobId);
       const faviconResult = await convertToFavicon(
-        processedSvgBuffer,
+        conversionContext,
         baseName,
         scale,
         cornerRadius,
+        availableSizes,
         jobId,
       );
       log('verbose', `Favicon output size: ${formatBytes(faviconResult.buffer.length)}`, jobId);
       results.push(faviconResult);
     } else {
-      // All formats: ICO, ICNS, Favicon, PNG (1024px), and original SVG
-      log('debug', `Converting to all formats (ICO, ICNS, Favicon, PNG, SVG)`, jobId);
+      // All formats: ICO, ICNS, Favicon, PNG (max available), and original source
+      log('debug', `Converting to all formats (ICO, ICNS, Favicon, PNG, source)`, jobId);
 
-      const [icoResult, icnsResult, faviconResult, pngResult] = await Promise.all([
-        convertToIco(processedSvgBuffer, 'icon', scale, cornerRadius, jobId),
-        convertToIcns(processedSvgBuffer, 'icon', scale, cornerRadius, jobId),
-        convertToFavicon(processedSvgBuffer, 'favicon', scale, cornerRadius, jobId),
-        convertToPng(processedSvgBuffer, 'icon', scale, cornerRadius, 1024, jobId),
-      ]);
+      const icoSizes = filterSizesForSource(ICO_SIZES, sourceDimensions, jobId);
+      const uniqueIcnsSizes = [...new Set(ICNS_ICON_TYPES.map((t) => t.size))].sort(
+        (a, b) => a - b,
+      );
+      const icnsSizes = filterSizesForSource(uniqueIcnsSizes, sourceDimensions, jobId);
+      const faviconSizes = filterSizesForSource(FAVICON_SIZES, sourceDimensions, jobId);
+      const maxPngSize = sourceDimensions
+        ? Math.min(1024, sourceDimensions.width, sourceDimensions.height)
+        : 1024;
 
-      // Include original SVG
-      const svgResult = {
-        buffer: processedSvgBuffer,
-        filename: 'icon.svg',
-        mimeType: 'image/svg+xml',
+      const conversionPromises: Promise<{ buffer: Buffer; filename: string; mimeType: string }>[] =
+        [];
+
+      if (icoSizes.length > 0) {
+        conversionPromises.push(
+          convertToIco(conversionContext, 'icon', scale, cornerRadius, icoSizes, jobId),
+        );
+      }
+      if (icnsSizes.length > 0) {
+        conversionPromises.push(
+          convertToIcns(conversionContext, 'icon', scale, cornerRadius, icnsSizes, jobId),
+        );
+      }
+      if (faviconSizes.length > 0) {
+        conversionPromises.push(
+          convertToFavicon(conversionContext, 'favicon', scale, cornerRadius, faviconSizes, jobId),
+        );
+      }
+      conversionPromises.push(
+        convertToPng(conversionContext, 'icon', scale, cornerRadius, maxPngSize, jobId),
+      );
+
+      const formatResults = await Promise.all(conversionPromises);
+
+      // Include original source file
+      const sourceResult = {
+        buffer: sourceType === 'svg' ? processedSvgBuffer! : pngSourceBuffer!,
+        filename: sourceType === 'svg' ? 'icon.svg' : 'icon.png',
+        mimeType: sourceType === 'svg' ? 'image/svg+xml' : 'image/png',
       };
 
       log(
         'verbose',
-        `All formats - ICO: ${formatBytes(icoResult.buffer.length)}, ICNS: ${formatBytes(icnsResult.buffer.length)}, Favicon: ${formatBytes(faviconResult.buffer.length)}, PNG: ${formatBytes(pngResult.buffer.length)}, SVG: ${formatBytes(svgResult.buffer.length)}`,
+        `All formats - ${formatResults.map((r) => `${r.filename}: ${formatBytes(r.buffer.length)}`).join(', ')}, source: ${formatBytes(sourceResult.buffer.length)}`,
         jobId,
       );
 
-      results.push(icoResult, icnsResult, faviconResult, pngResult, svgResult);
+      results.push(...formatResults, sourceResult);
     }
 
     const processingTimeMs = Date.now() - startTime;
@@ -299,10 +417,10 @@ function createRoundedMask(size: number, cornerRadiusPercent: RoundnessValue): B
 }
 
 /**
- * Convert SVG to PNG format
+ * Convert source to PNG format
  */
 async function convertToPng(
-  svgBuffer: Buffer,
+  context: ConversionContext,
   baseName: string,
   scale: number,
   cornerRadius: RoundnessValue,
@@ -310,7 +428,7 @@ async function convertToPng(
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
-    const [pngBuffer] = await renderSvgToPngs(svgBuffer, [outputSize], scale, cornerRadius, jobId);
+    const [pngBuffer] = await renderToPngs(context, [outputSize], scale, cornerRadius, jobId);
     return {
       buffer: pngBuffer,
       filename: `${baseName}.png`,
@@ -322,18 +440,19 @@ async function convertToPng(
 }
 
 /**
- * Convert SVG to ICO format (Windows icon)
+ * Convert source to ICO format (Windows icon)
  */
 async function convertToIco(
-  svgBuffer: Buffer,
+  context: ConversionContext,
   baseName: string,
   scale: number,
   cornerRadius: RoundnessValue,
+  sizes: number[],
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
-    log('verbose', `Rendering ${ICO_SIZES.length} PNG sizes for ICO`, jobId);
-    const pngBuffers = await renderSvgToPngs(svgBuffer, ICO_SIZES, scale, cornerRadius, jobId);
+    log('verbose', `Rendering ${sizes.length} PNG sizes for ICO`, jobId);
+    const pngBuffers = await renderToPngs(context, sizes, scale, cornerRadius, jobId);
 
     log('verbose', `Encoding ICO file`, jobId);
     const icoBuffer = encodeIco(pngBuffers);
@@ -349,19 +468,19 @@ async function convertToIco(
 }
 
 /**
- * Convert SVG to Favicon ICO format (web favicon)
- * Uses only 16, 32, and 48px sizes for web compatibility
+ * Convert source to Favicon ICO format (web favicon)
  */
 async function convertToFavicon(
-  svgBuffer: Buffer,
+  context: ConversionContext,
   baseName: string,
   scale: number,
   cornerRadius: RoundnessValue,
+  sizes: number[],
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
-    log('verbose', `Rendering ${FAVICON_SIZES.length} PNG sizes for favicon`, jobId);
-    const pngBuffers = await renderSvgToPngs(svgBuffer, FAVICON_SIZES, scale, cornerRadius, jobId);
+    log('verbose', `Rendering ${sizes.length} PNG sizes for favicon`, jobId);
+    const pngBuffers = await renderToPngs(context, sizes, scale, cornerRadius, jobId);
 
     log('verbose', `Encoding favicon ICO file`, jobId);
     const icoBuffer = encodeIco(pngBuffers);
@@ -377,21 +496,19 @@ async function convertToFavicon(
 }
 
 /**
- * Convert SVG to ICNS format (macOS icon)
+ * Convert source to ICNS format (macOS icon)
  *
  * macOS icons need automatic scaling to match system icon appearance.
  * Apple's design guidelines expect icons to have padding around them so they
  * visually align with other system icons. We apply MACOS_ICON_SCALE (~80.5%)
  * to the user's scale factor to achieve this.
- *
- * This function renders PNGs at each required size directly from the SVG
- * (rather than downsampling from a single large image) for optimal quality.
  */
 async function convertToIcns(
-  svgBuffer: Buffer,
+  context: ConversionContext,
   baseName: string,
   scale: number,
   cornerRadius: RoundnessValue,
+  availableSizes: number[],
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
@@ -399,19 +516,16 @@ async function convertToIcns(
     // User's 100% scale becomes ~80.5% to add proper padding
     const macosAdjustedScale = scale * MACOS_ICON_SCALE;
 
-    // Get unique sizes needed (some OSTypes share the same pixel size)
-    const uniqueSizes = [...new Set(ICNS_ICON_TYPES.map((t) => t.size))].sort((a, b) => a - b);
-
     log(
       'verbose',
-      `Rendering ICNS at ${uniqueSizes.length} unique sizes with macOS scaling (${scale}% → ${macosAdjustedScale.toFixed(1)}%)`,
+      `Rendering ICNS at ${availableSizes.length} sizes with macOS scaling (${scale}% → ${macosAdjustedScale.toFixed(1)}%)`,
       jobId,
     );
 
-    // Render all unique sizes with the macOS-adjusted scale
-    const pngBuffers = await renderSvgToPngs(
-      svgBuffer,
-      uniqueSizes,
+    // Render all available sizes with the macOS-adjusted scale
+    const pngBuffers = await renderToPngs(
+      context,
+      availableSizes,
       macosAdjustedScale,
       cornerRadius,
       jobId,
@@ -419,15 +533,16 @@ async function convertToIcns(
 
     // Create a map of size -> PNG buffer for easy lookup
     const pngBySize = new Map<number, Buffer>();
-    uniqueSizes.forEach((size, index) => {
+    availableSizes.forEach((size, index) => {
       pngBySize.set(size, pngBuffers[index]);
     });
 
-    // Build ICNS file with all icon types
-    log('verbose', `Encoding ICNS file with ${ICNS_ICON_TYPES.length} icon entries`, jobId);
+    // Build ICNS file with icon types that we have sizes for
+    const availableIconTypes = ICNS_ICON_TYPES.filter((t) => availableSizes.includes(t.size));
+    log('verbose', `Encoding ICNS file with ${availableIconTypes.length} icon entries`, jobId);
     const icns = new Icns();
 
-    for (const { osType, size } of ICNS_ICON_TYPES) {
+    for (const { osType, size } of availableIconTypes) {
       const pngBuffer = pngBySize.get(size);
       if (pngBuffer) {
         const image = IcnsImage.fromPNG(pngBuffer, osType);
@@ -468,9 +583,37 @@ function getSvgDimensions(svgString: string): { width: number; height: number } 
 }
 
 /**
- * Render SVG to PNG buffers at specified sizes
+ * Render source (SVG or PNG) to PNG buffers at specified sizes.
+ * For PNG sources, only downscaling is performed (never upscaling).
  */
-async function renderSvgToPngs(
+async function renderToPngs(
+  context: ConversionContext,
+  sizes: number[],
+  scale: number,
+  cornerRadius: RoundnessValue,
+  jobId?: string,
+): Promise<Buffer[]> {
+  const { svgBuffer, pngBuffer, sourceType, sourceDimensions } = context;
+
+  log(
+    'verbose',
+    `Rendering ${sizes.length} size(s): [${sizes.join(', ')}]px from ${sourceType}`,
+    jobId,
+  );
+
+  if (sourceType === 'svg' && svgBuffer) {
+    return renderSvgSourceToPngs(svgBuffer, sizes, scale, cornerRadius, jobId);
+  } else if (sourceType === 'png' && pngBuffer && sourceDimensions) {
+    return renderPngSourceToPngs(pngBuffer, sourceDimensions, sizes, scale, cornerRadius, jobId);
+  } else {
+    throw new Error('Invalid conversion context: missing source buffer');
+  }
+}
+
+/**
+ * Render SVG source to PNG buffers at specified sizes
+ */
+async function renderSvgSourceToPngs(
   svgBuffer: Buffer,
   sizes: number[],
   scale: number,
@@ -492,13 +635,11 @@ async function renderSvgToPngs(
     height: svgDimensions.height / largestDimension,
   };
 
-  log('verbose', `Rendering ${sizes.length} size(s): [${sizes.join(', ')}]px`, jobId);
-
   return Promise.all(
     sizes.map(async (size) => {
       try {
         const scaleFactor = scale / 100;
-        let pngBuffer: Buffer;
+        let pngResultBuffer: Buffer;
 
         if (scaleFactor <= 1) {
           // Scale <= 100%: render smaller icon with padding
@@ -506,7 +647,7 @@ async function renderSvgToPngs(
           const renderWidth = Math.round(iconSize * aspectRatio.width);
           const renderHeight = Math.round(iconSize * aspectRatio.height);
 
-          log('verbose', `Size ${size}px: rendering at ${iconSize}px (${scale}% scale)`, jobId);
+          log('verbose', `Size ${size}px: rendering SVG at ${iconSize}px (${scale}% scale)`, jobId);
 
           const resvg = new Resvg(svgString, {
             fitTo: {
@@ -525,7 +666,7 @@ async function renderSvgToPngs(
           const paddingTop = Math.round((size - renderHeight) / 2);
           const paddingBottom = size - renderHeight - paddingTop;
 
-          pngBuffer = await sharp(Buffer.from(pngData))
+          pngResultBuffer = await sharp(Buffer.from(pngData))
             .extend({
               top: paddingTop,
               bottom: paddingBottom,
@@ -533,7 +674,7 @@ async function renderSvgToPngs(
               right: paddingRight,
               background: { r: 0, g: 0, b: 0, alpha: 0 },
             })
-            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions
+            .resize(size, size, { fit: 'fill' })
             .png()
             .toBuffer();
         } else {
@@ -542,7 +683,7 @@ async function renderSvgToPngs(
 
           log(
             'verbose',
-            `Size ${size}px: rendering at ${renderSize}px then cropping (${scale}% scale)`,
+            `Size ${size}px: rendering SVG at ${renderSize}px then cropping (${scale}% scale)`,
             jobId,
           );
 
@@ -584,14 +725,14 @@ async function renderSvgToPngs(
             .png()
             .toBuffer();
 
-          pngBuffer = await sharp(extendedBuffer)
+          pngResultBuffer = await sharp(extendedBuffer)
             .extract({
               left: safeOffset,
               top: safeOffset,
               width: extractSize,
               height: extractSize,
             })
-            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions
+            .resize(size, size, { fit: 'fill' })
             .png()
             .toBuffer();
         }
@@ -600,26 +741,161 @@ async function renderSvgToPngs(
         if (cornerRadius > 0) {
           log('verbose', `Applying ${cornerRadius}% corner radius to ${size}px image`, jobId);
           const maskBuffer = createRoundedMask(size, cornerRadius);
-          pngBuffer = await sharp(pngBuffer)
+          pngResultBuffer = await sharp(pngResultBuffer)
             .composite([
               {
                 input: maskBuffer,
                 blend: 'dest-in',
               },
             ])
-            .resize(size, size, { fit: 'fill' }) // Ensure exact dimensions after composite
+            .resize(size, size, { fit: 'fill' })
             .png()
             .toBuffer();
         }
 
-        // Final size verification - ensure output is exactly the target size
-        pngBuffer = await sharp(pngBuffer).resize(size, size, { fit: 'fill' }).png().toBuffer();
+        // Final size verification
+        pngResultBuffer = await sharp(pngResultBuffer)
+          .resize(size, size, { fit: 'fill' })
+          .png()
+          .toBuffer();
 
-        return pngBuffer;
+        return pngResultBuffer;
       } catch (error) {
         log(
           'error',
-          `Failed to render ${size}px PNG: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Failed to render ${size}px PNG from SVG: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          jobId,
+        );
+        throw new Error(
+          `Failed to render ${size}px image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+    }),
+  );
+}
+
+/**
+ * Render PNG source to PNG buffers at specified sizes.
+ * Only downscales - never upscales to avoid quality loss.
+ */
+async function renderPngSourceToPngs(
+  pngSourceBuffer: Buffer,
+  sourceDimensions: SourceDimensions,
+  sizes: number[],
+  scale: number,
+  cornerRadius: RoundnessValue,
+  jobId?: string,
+): Promise<Buffer[]> {
+  const sourceSize = Math.min(sourceDimensions.width, sourceDimensions.height);
+
+  return Promise.all(
+    sizes.map(async (size) => {
+      try {
+        // Ensure we never upscale
+        if (size > sourceSize) {
+          throw new Error(
+            `Cannot render ${size}px from ${sourceSize}px source (upscaling not allowed)`,
+          );
+        }
+
+        const scaleFactor = scale / 100;
+        let pngResultBuffer: Buffer;
+
+        // Get the source image, resized to a square based on the smaller dimension
+        const squareSource = await sharp(pngSourceBuffer)
+          .resize(sourceSize, sourceSize, { fit: 'cover', position: 'center' })
+          .png()
+          .toBuffer();
+
+        if (scaleFactor <= 1) {
+          // Scale <= 100%: render smaller icon with padding
+          const iconSize = Math.round(size * scaleFactor);
+
+          log('verbose', `Size ${size}px: resizing PNG to ${iconSize}px (${scale}% scale)`, jobId);
+
+          // Resize the source to icon size
+          const resizedIcon = await sharp(squareSource)
+            .resize(iconSize, iconSize, { fit: 'fill' })
+            .png()
+            .toBuffer();
+
+          // Calculate padding to center the icon
+          const padding = Math.round((size - iconSize) / 2);
+          const paddingRight = size - iconSize - padding;
+          const paddingBottom = size - iconSize - padding;
+
+          pngResultBuffer = await sharp(resizedIcon)
+            .extend({
+              top: padding,
+              bottom: paddingBottom,
+              left: padding,
+              right: paddingRight,
+              background: { r: 0, g: 0, b: 0, alpha: 0 },
+            })
+            .resize(size, size, { fit: 'fill' })
+            .png()
+            .toBuffer();
+        } else {
+          // Scale > 100%: render larger and crop center
+          const renderSize = Math.round(size * scaleFactor);
+          // But don't exceed source size
+          const actualRenderSize = Math.min(renderSize, sourceSize);
+
+          log(
+            'verbose',
+            `Size ${size}px: resizing PNG to ${actualRenderSize}px then cropping (${scale}% scale)`,
+            jobId,
+          );
+
+          const resizedBuffer = await sharp(squareSource)
+            .resize(actualRenderSize, actualRenderSize, { fit: 'fill' })
+            .png()
+            .toBuffer();
+
+          // Center crop to target size
+          const offset = Math.round((actualRenderSize - size) / 2);
+          const safeOffset = Math.max(0, offset);
+          const extractSize = Math.min(size, actualRenderSize - safeOffset);
+
+          pngResultBuffer = await sharp(resizedBuffer)
+            .extract({
+              left: safeOffset,
+              top: safeOffset,
+              width: extractSize,
+              height: extractSize,
+            })
+            .resize(size, size, { fit: 'fill' })
+            .png()
+            .toBuffer();
+        }
+
+        // Apply corner radius mask if specified
+        if (cornerRadius > 0) {
+          log('verbose', `Applying ${cornerRadius}% corner radius to ${size}px image`, jobId);
+          const maskBuffer = createRoundedMask(size, cornerRadius);
+          pngResultBuffer = await sharp(pngResultBuffer)
+            .composite([
+              {
+                input: maskBuffer,
+                blend: 'dest-in',
+              },
+            ])
+            .resize(size, size, { fit: 'fill' })
+            .png()
+            .toBuffer();
+        }
+
+        // Final size verification
+        pngResultBuffer = await sharp(pngResultBuffer)
+          .resize(size, size, { fit: 'fill' })
+          .png()
+          .toBuffer();
+
+        return pngResultBuffer;
+      } catch (error) {
+        log(
+          'error',
+          `Failed to render ${size}px PNG from source: ${error instanceof Error ? error.message : 'Unknown error'}`,
           jobId,
         );
         throw new Error(

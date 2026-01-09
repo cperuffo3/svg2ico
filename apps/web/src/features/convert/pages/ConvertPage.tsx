@@ -1,7 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Footer, Header } from '@/features/home/components';
 import { useDebouncedValue } from '@/hooks';
-import { faArrowsRotate, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
+import {
+  faArrowsRotate,
+  faCircleInfo,
+  faShieldHalved,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -11,14 +16,15 @@ import {
   OutputFormatSelector,
   SvgPreview,
 } from '../components';
-import type {
-  BackgroundRemovalOption,
-  ConversionOptions as ConversionOptionsType,
-  ConversionState,
-  ConversionStep,
-  OutputFormat,
-  RoundnessValue,
-  UploadedFile,
+import {
+  getSizeAvailabilityInfo,
+  type BackgroundRemovalOption,
+  type ConversionOptions as ConversionOptionsType,
+  type ConversionState,
+  type ConversionStep,
+  type OutputFormat,
+  type RoundnessValue,
+  type UploadedFile,
 } from '../types';
 
 const SMALL_HEIGHT_THRESHOLD = 1100;
@@ -40,7 +46,7 @@ function useIsSmallHeight() {
   return isSmallHeight;
 }
 
-function getConversionSteps(format: OutputFormat): ConversionStep[] {
+function getConversionSteps(format: OutputFormat, fileType: 'svg' | 'png'): ConversionStep[] {
   const formatLabels: Record<OutputFormat, string> = {
     ico: 'ICO (16-256px)',
     icns: 'ICNS (16-1024px)',
@@ -48,8 +54,10 @@ function getConversionSteps(format: OutputFormat): ConversionStep[] {
     all: 'ICO + ICNS bundle',
   };
 
+  const fileTypeLabel = fileType === 'svg' ? 'SVG' : 'PNG';
+
   return [
-    { id: 'validate', label: 'Validating SVG file', status: 'pending' },
+    { id: 'validate', label: `Validating ${fileTypeLabel} file`, status: 'pending' },
     { id: 'render', label: `Rendering ${formatLabels[format]}`, status: 'pending' },
     { id: 'generate', label: 'Generating multi-resolution icon', status: 'pending' },
     { id: 'optimize', label: 'Optimizing file size', status: 'pending' },
@@ -57,7 +65,7 @@ function getConversionSteps(format: OutputFormat): ConversionStep[] {
   ];
 }
 
-const defaultSteps: ConversionStep[] = getConversionSteps('ico');
+const defaultSteps: ConversionStep[] = getConversionSteps('ico', 'svg');
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -115,7 +123,7 @@ export function ConvertPage() {
     setProgress(0);
 
     // Get format-specific steps
-    const formatSteps = getConversionSteps(options.outputFormat);
+    const formatSteps = getConversionSteps(options.outputFormat, uploadedFile.type);
     const stepsCopy = [...formatSteps];
     setSteps(stepsCopy);
 
@@ -152,6 +160,12 @@ export function ConvertPage() {
       formData.append('backgroundRemovalMode', options.backgroundRemoval.mode);
       if (options.backgroundRemoval.mode === 'color' && options.backgroundRemoval.color) {
         formData.append('backgroundRemovalColor', options.backgroundRemoval.color);
+      }
+
+      // For PNG files, send source dimensions so backend can filter output sizes
+      if (uploadedFile.dimensions) {
+        formData.append('sourceWidth', uploadedFile.dimensions.width.toString());
+        formData.append('sourceHeight', uploadedFile.dimensions.height.toString());
       }
 
       const response = await fetch('/api/v1/convert', {
@@ -248,7 +262,7 @@ export function ConvertPage() {
         <Header />
         <main className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-4 px-6 py-12">
           <p className="text-muted-foreground">
-            No file uploaded. Please upload an SVG file first.
+            No file uploaded. Please upload an SVG or PNG file first.
           </p>
           <Button onClick={() => navigate('/')}>Go to Upload</Button>
         </main>
@@ -256,6 +270,13 @@ export function ConvertPage() {
       </div>
     );
   }
+
+  // Get size availability info for PNG files
+  const isPng = uploadedFile.type === 'png';
+  const sizeInfo = getSizeAvailabilityInfo(uploadedFile.dimensions, options.outputFormat);
+  const sourceSize = uploadedFile.dimensions
+    ? Math.min(uploadedFile.dimensions.width, uploadedFile.dimensions.height)
+    : null;
 
   const isConverting = conversionState === 'converting';
 
@@ -286,6 +307,57 @@ export function ConvertPage() {
               onBackgroundRemovalChange={handleBackgroundRemovalChange}
               onRemove={handleRemove}
             />
+
+            {/* PNG size limitation info - shown for PNG files */}
+            {isPng && sourceSize !== null && conversionState === 'idle' && (
+              <div
+                className={`flex items-start gap-3 rounded-lg p-4 ${
+                  sizeInfo.isLimited
+                    ? 'border border-amber-500/30 bg-amber-500/10'
+                    : sourceSize < 1024
+                      ? 'border border-blue-500/30 bg-blue-500/10'
+                      : 'border border-green-500/30 bg-green-500/10'
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={sizeInfo.isLimited ? faTriangleExclamation : faCircleInfo}
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${
+                    sizeInfo.isLimited
+                      ? 'text-amber-500'
+                      : sourceSize < 1024
+                        ? 'text-blue-500'
+                        : 'text-green-500'
+                  }`}
+                />
+                <div className="flex flex-col gap-1 text-sm">
+                  <span className="font-medium text-foreground">
+                    Source: {uploadedFile.dimensions?.width}x{uploadedFile.dimensions?.height}px PNG
+                  </span>
+                  {sizeInfo.isLimited ? (
+                    <>
+                      <span className="text-muted-foreground">
+                        Output will include {sizeInfo.availableSizes.length} of{' '}
+                        {sizeInfo.allSizes.length} sizes ({sizeInfo.availableSizes.join(', ')}px).
+                        Larger sizes excluded to avoid upscaling.
+                      </span>
+                      {sourceSize < 1024 && (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          For best results, use a 1024x1024px PNG or an SVG file.
+                        </span>
+                      )}
+                    </>
+                  ) : sourceSize < 1024 ? (
+                    <span className="text-muted-foreground">
+                      For best results with ICNS, consider using a 1024x1024px source.
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      All output sizes available. Great source resolution!
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Output format selector - shown only when idle */}
             {conversionState === 'idle' && (

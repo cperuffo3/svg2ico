@@ -11,8 +11,12 @@ export function FileUploadZone() {
 
   const processFile = useCallback(
     (file: File) => {
-      if (!file.name.toLowerCase().endsWith('.svg')) {
-        alert('Please upload an SVG file');
+      const fileName = file.name.toLowerCase();
+      const isSvg = fileName.endsWith('.svg');
+      const isPng = fileName.endsWith('.png');
+
+      if (!isSvg && !isPng) {
+        alert('Please upload an SVG or PNG file');
         return;
       }
 
@@ -24,13 +28,39 @@ export function FileUploadZone() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
-        const uploadedFile: UploadedFile = {
-          file,
-          name: file.name,
-          size: file.size,
-          dataUrl,
-        };
-        navigate('/convert', { state: { file: uploadedFile } });
+
+        if (isPng) {
+          // For PNG files, we need to read dimensions before navigating
+          const img = new Image();
+          img.onload = () => {
+            const uploadedFile: UploadedFile = {
+              file,
+              name: file.name,
+              size: file.size,
+              dataUrl,
+              type: 'png',
+              dimensions: {
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+              },
+            };
+            navigate('/convert', { state: { file: uploadedFile } });
+          };
+          img.onerror = () => {
+            alert('Failed to read PNG file. Please try a different file.');
+          };
+          img.src = dataUrl;
+        } else {
+          // SVG files don't need dimension detection on frontend
+          const uploadedFile: UploadedFile = {
+            file,
+            name: file.name,
+            size: file.size,
+            dataUrl,
+            type: 'svg',
+          };
+          navigate('/convert', { state: { file: uploadedFile } });
+        }
       };
       reader.readAsDataURL(file);
     },
@@ -88,7 +118,7 @@ export function FileUploadZone() {
           <FontAwesomeIcon icon={faCloudArrowUp} className="h-8 w-8 text-muted-foreground" />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-lg font-medium text-foreground">Drag & drop your SVG here</span>
+          <span className="text-lg font-medium text-foreground">Drag & drop your SVG or PNG here</span>
           <span className="text-sm text-muted-foreground">or</span>
           <button
             type="button"
@@ -98,11 +128,13 @@ export function FileUploadZone() {
             Browse Files
           </button>
         </div>
-        <span className="pt-2 text-xs text-muted-foreground">Accepts .svg files up to 10MB</span>
+        <span className="pt-2 text-xs text-muted-foreground">
+          Accepts .svg and .png files up to 10MB
+        </span>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".svg"
+          accept=".svg,.png"
           onChange={handleInputChange}
           className="hidden"
         />

@@ -2,11 +2,18 @@ import type {
   BackgroundRemovalMode,
   OutputFormat,
   RoundnessValue,
+  SourceFileType,
 } from '../../conversion/dto/convert.dto.js';
+
+export interface SourceDimensions {
+  width: number;
+  height: number;
+}
 
 export interface ConversionJobData {
   jobId: string;
-  svgBuffer: Buffer;
+  inputBuffer: Buffer; // Can be SVG or PNG data
+  sourceType: SourceFileType;
   originalFilename: string;
   format: OutputFormat;
   scale: number;
@@ -14,6 +21,7 @@ export interface ConversionJobData {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  sourceDimensions?: SourceDimensions; // For PNG input, dimensions to limit output sizes
 }
 
 export interface ConversionJobResult {

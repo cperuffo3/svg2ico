@@ -77,7 +77,7 @@ function ScaleSlider({ scale, onScaleChange }: ScaleSliderProps) {
 interface SvgPreviewProps {
   fileName: string;
   fileSize: string;
-  svgDataUrl: string;
+  svgDataUrl: string; // Can be SVG or PNG data URL
   scale: number;
   cornerRadius: RoundnessValue;
   backgroundRemoval: BackgroundRemovalOption;
@@ -108,8 +108,16 @@ export function SvgPreview({
 
   const appBackgroundColor = previewBackgrounds[previewContext][previewTheme];
 
-  // Process SVG with background removal
+  // Check if this is a PNG file (background removal not supported for PNG preview)
+  const isPng = svgDataUrl.startsWith('data:image/png');
+
+  // Process SVG with background removal (only for SVG files)
   const processedSvgDataUrl = useMemo(() => {
+    // PNG files don't support client-side background removal preview
+    if (isPng) {
+      return svgDataUrl;
+    }
+
     if (backgroundRemoval.mode === 'none') {
       return svgDataUrl;
     }
@@ -145,7 +153,7 @@ export function SvgPreview({
       console.error('Error processing SVG for background removal:', error);
       return svgDataUrl;
     }
-  }, [svgDataUrl, backgroundRemoval.mode, backgroundRemoval.color]);
+  }, [svgDataUrl, backgroundRemoval.mode, backgroundRemoval.color, isPng]);
 
   return (
     <div className="flex flex-col gap-4">

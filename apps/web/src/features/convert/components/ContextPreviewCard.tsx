@@ -191,11 +191,25 @@ export function ContextPreviewCard({
     };
   };
 
-  // Process SVG with background removal
+  // Check if input is PNG
+  const isPng = svgDataUrl?.startsWith('data:image/png');
+
+  // Process SVG with background removal (or pass through PNG)
   const processedIconData = useMemo(() => {
     if (!svgDataUrl) return null;
 
     try {
+      // Handle PNG files - pass through directly with default dimensions
+      if (isPng) {
+        // For PNG, we assume square aspect ratio (1:1) since we can't easily parse PNG dimensions
+        // The actual rendering will handle aspect ratio via object-fit
+        return {
+          svg: null,
+          pngDataUrl: svgDataUrl,
+          dimensions: { width: 1, height: 1, aspectRatio: 1 },
+        };
+      }
+
       let svgString: string;
 
       // Decode the data URL to get the SVG string
@@ -225,26 +239,33 @@ export function ContextPreviewCard({
         svgString = result.svg;
       }
 
-      return { svg: svgString, dimensions };
+      return { svg: svgString, pngDataUrl: null, dimensions };
     } catch (error) {
       console.error('Error processing SVG:', error);
       return null;
     }
-  }, [svgDataUrl, backgroundRemoval.mode, backgroundRemoval.color]);
+  }, [svgDataUrl, backgroundRemoval.mode, backgroundRemoval.color, isPng]);
 
   // Generate composite SVGs for each preview
   const compositeSvgs = useMemo(() => {
     if (!processedIconData) return {};
 
-    const { svg: processedIconSvg, dimensions } = processedIconData;
+    const { svg: processedIconSvg, pngDataUrl, dimensions } = processedIconData;
 
     // Create a data URL from the processed SVG for use in the composite
-    let processedSvgDataUrl: string;
-    try {
-      processedSvgDataUrl = `data:image/svg+xml;base64,${btoa(processedIconSvg)}`;
-    } catch {
-      // If btoa fails (non-ASCII chars), use encodeURIComponent
-      processedSvgDataUrl = `data:image/svg+xml,${encodeURIComponent(processedIconSvg)}`;
+    // For PNG, use the PNG data URL directly
+    let processedImageDataUrl: string;
+    if (pngDataUrl) {
+      processedImageDataUrl = pngDataUrl;
+    } else if (processedIconSvg) {
+      try {
+        processedImageDataUrl = `data:image/svg+xml;base64,${btoa(processedIconSvg)}`;
+      } catch {
+        // If btoa fails (non-ASCII chars), use encodeURIComponent
+        processedImageDataUrl = `data:image/svg+xml,${encodeURIComponent(processedIconSvg)}`;
+      }
+    } else {
+      return {};
     }
 
     const result: Record<string, string> = {};
@@ -284,7 +305,7 @@ export function ContextPreviewCard({
           <g clip-path="url(#${clipId})">
             <foreignObject x="${placement.x + offsetX}" y="${placement.y + offsetY}" width="${iconWidth}" height="${iconHeight}">
               <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${processedSvgDataUrl}" style="width:100%;height:100%;object-fit:contain;" />
+                <img src="${processedImageDataUrl}" style="width:100%;height:100%;object-fit:contain;" />
               </div>
             </foreignObject>
           </g>

@@ -5,12 +5,22 @@ import {
   Logger,
 } from '@nestjs/common';
 import { WorkerPoolService } from '../workers/worker-pool.service.js';
-import type { BackgroundRemovalMode, OutputFormat, RoundnessValue } from './dto/convert.dto.js';
+import type {
+  BackgroundRemovalMode,
+  OutputFormat,
+  RoundnessValue,
+  SourceFileType,
+} from './dto/convert.dto.js';
 
 export interface ConversionResult {
   buffer: Buffer;
   filename: string;
   mimeType: string;
+}
+
+export interface SourceDimensions {
+  width: number;
+  height: number;
 }
 
 export interface ConversionOptions {
@@ -19,6 +29,7 @@ export interface ConversionOptions {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  sourceDimensions?: SourceDimensions;
 }
 
 @Injectable()
@@ -28,33 +39,49 @@ export class ConversionService {
   constructor(private readonly workerPool: WorkerPoolService) {}
 
   async convert(
-    svgBuffer: Buffer,
+    inputBuffer: Buffer,
     originalFilename: string,
     format: OutputFormat,
     options: ConversionOptions,
   ): Promise<ConversionResult | ConversionResult[]> {
-    const inputSize = svgBuffer.length;
+    const inputSize = inputBuffer.length;
+    const sourceType = this.detectSourceType(originalFilename);
+
     this.logger.log(
-      `Received conversion request: ${originalFilename} (${this.formatBytes(inputSize)})`,
+      `Received conversion request: ${originalFilename} (${this.formatBytes(inputSize)}, type: ${sourceType})`,
     );
 
-    // Quick validation before submitting to worker
-    const svgString = svgBuffer.toString('utf-8');
-    if (!this.isValidSvg(svgString)) {
-      this.logger.warn(`Rejected invalid SVG: ${originalFilename}`);
-      throw new BadRequestException(
-        'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
-      );
+    // Validate based on source type
+    if (sourceType === 'svg') {
+      const svgString = inputBuffer.toString('utf-8');
+      if (!this.isValidSvg(svgString)) {
+        this.logger.warn(`Rejected invalid SVG: ${originalFilename}`);
+        throw new BadRequestException(
+          'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+        );
+      }
+    } else if (sourceType === 'png') {
+      if (!this.isValidPng(inputBuffer)) {
+        this.logger.warn(`Rejected invalid PNG: ${originalFilename}`);
+        throw new BadRequestException(
+          'The uploaded file is not a valid PNG. Please upload a valid PNG image.',
+        );
+      }
     }
 
+    const dimensionsInfo = options.sourceDimensions
+      ? ` (source: ${options.sourceDimensions.width}x${options.sourceDimensions.height}px)`
+      : '';
+
     this.logger.debug(
-      `Submitting job: ${originalFilename} -> ${format} (scale: ${options.scale}%, corner: ${options.cornerRadius}%, bg: ${options.backgroundRemovalMode}, size: ${options.outputSize}px)`,
+      `Submitting job: ${originalFilename} -> ${format} (scale: ${options.scale}%, corner: ${options.cornerRadius}%, bg: ${options.backgroundRemovalMode}, size: ${options.outputSize}px)${dimensionsInfo}`,
     );
 
     try {
       // Submit job to worker pool
       const result = await this.workerPool.submitJob({
-        svgBuffer,
+        inputBuffer,
+        sourceType,
         originalFilename,
         format,
         scale: options.scale,
@@ -62,6 +89,7 @@ export class ConversionService {
         backgroundRemovalMode: options.backgroundRemovalMode,
         backgroundRemovalColor: options.backgroundRemovalColor,
         outputSize: options.outputSize,
+        sourceDimensions: options.sourceDimensions,
       });
 
       if (!result.success) {
@@ -104,6 +132,14 @@ export class ConversionService {
     }
   }
 
+  private detectSourceType(filename: string): SourceFileType {
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'png';
+    }
+    return 'svg';
+  }
+
   private isValidSvg(content: string): boolean {
     const trimmed = content.trim();
     // Must have <svg tag somewhere
@@ -112,6 +148,20 @@ export class ConversionService {
     }
     // Can start with XML declaration or directly with <svg
     return trimmed.startsWith('<svg') || trimmed.startsWith('<?xml');
+  }
+
+  private isValidPng(buffer: Buffer): boolean {
+    // PNG files start with an 8-byte signature: 89 50 4E 47 0D 0A 1A 0A
+    if (buffer.length < 8) {
+      return false;
+    }
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    for (let i = 0; i < 8; i++) {
+      if (buffer[i] !== pngSignature[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private formatBytes(bytes: number): string {
