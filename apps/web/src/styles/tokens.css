@@ -44,6 +44,9 @@
   --color-card: var(--surface-card);
   --color-card-foreground: var(--content-base);
 
+  --color-card-header: var(--surface-card-header);
+  --color-card-header-foreground: var(--content-base);
+
   --color-popover: var(--surface-elevated);
   --color-popover-foreground: var(--content-base);
 
@@ -126,6 +129,7 @@
   /* ---------- Surface ---------- */
   --surface-base: var(--primitive-white);
   --surface-card: var(--primitive-white);
+  --surface-card-header: var(--primitive-zinc-50);
   --surface-elevated: var(--primitive-white);
   --surface-secondary: var(--primitive-zinc-100);
   --surface-muted: var(--primitive-zinc-100);
@@ -195,6 +199,9 @@
   --section-primary-from: var(--primitive-blue-50);
   --section-primary-to: var(--primitive-indigo-50);
   --section-primary-border: var(--primitive-blue-100);
+
+  /* ---------- Transparency Grid ---------- */
+  --transparency-grid-color: #e5e5e5;
 }
 
 /* ========================================
@@ -205,6 +212,7 @@
   /* ---------- Surface ---------- */
   --surface-base: var(--primitive-zinc-950);
   --surface-card: var(--primitive-zinc-900);
+  --surface-card-header: var(--primitive-zinc-800);
   --surface-elevated: var(--primitive-zinc-800);
   --surface-secondary: var(--primitive-zinc-800);
   --surface-muted: var(--primitive-zinc-800);
@@ -274,4 +282,7 @@
   --section-primary-from: var(--primitive-blue-950);
   --section-primary-to: var(--primitive-indigo-950);
   --section-primary-border: var(--primitive-blue-900);
+
+  /* ---------- Transparency Grid ---------- */
+  --transparency-grid-color: #404040;
 }

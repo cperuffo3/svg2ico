@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-gradient-primary-from to-gradient-primary-to">
@@ -20,7 +20,7 @@ export function Header() {
             rel="noopener noreferrer"
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
-            <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
+            <FontAwesomeIcon icon={faGithub} className="text-xl" />
           </a>
           <ThemeToggle />
         </div>

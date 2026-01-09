@@ -1,9 +1,41 @@
+import type { UploadedFile } from '@/features/convert/types';
 import { faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function FileUploadZone() {
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  const processFile = useCallback(
+    (file: File) => {
+      if (!file.name.toLowerCase().endsWith('.svg')) {
+        alert('Please upload an SVG file');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const uploadedFile: UploadedFile = {
+          file,
+          name: file.name,
+          size: file.size,
+          dataUrl,
+        };
+        navigate('/convert', { state: { file: uploadedFile } });
+      };
+      reader.readAsDataURL(file);
+    },
+    [navigate],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -15,15 +47,32 @@ export function FileUploadZone() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    // TODO: Handle file drop
-  }, []);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        processFile(files[0]);
+      }
+    },
+    [processFile],
+  );
 
   const handleFileSelect = useCallback(() => {
-    // TODO: Handle file selection via input
+    fileInputRef.current?.click();
   }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        processFile(files[0]);
+      }
+    },
+    [processFile],
+  );
 
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-lg">
@@ -50,6 +99,13 @@ export function FileUploadZone() {
           </button>
         </div>
         <span className="pt-2 text-xs text-muted-foreground">Accepts .svg files up to 10MB</span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".svg"
+          onChange={handleInputChange}
+          className="hidden"
+        />
       </div>
     </div>
   );

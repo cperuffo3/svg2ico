@@ -1,24 +1,13 @@
-import { faGithub, faTwitter } from '@fortawesome/free-brands-svg-icons';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const footerLinks = {
-  product: [
-    { label: 'Features', href: '#features' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'FAQ', href: '#faq' },
-    { label: 'Roadmap', href: '#roadmap' },
-  ],
   legal: [
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
-    { label: 'Cookie Policy', href: '/cookies' },
   ],
-  connect: [
-    { label: 'GitHub', href: 'https://github.com' },
-    { label: 'Twitter', href: 'https://twitter.com' },
-    { label: 'Contact', href: '/contact' },
-  ],
+  connect: [{ label: 'GitHub', href: 'https://github.com' }],
 };
 
 export function Footer() {
@@ -38,22 +27,6 @@ export function Footer() {
               Convert SVG files to ICO and ICNS formats with complete privacy and lightning-fast
               speed.
             </p>
-          </div>
-
-          {/* Product links */}
-          <div className="flex flex-1 flex-col gap-4">
-            <h4 className="text-base font-semibold text-foreground">Product</h4>
-            <div className="flex flex-col gap-2">
-              {footerLinks.product.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Legal links */}
@@ -92,7 +65,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 flex items-center justify-between border-t border-border pt-8">
           <p className="text-sm text-muted-foreground">
-            © 2024 svg2ico. Made with care for developers and designers.
+            © 2026 Corey Peruffo. Made with care for developers and designers.
           </p>
           <div className="flex items-center gap-4">
             <a
@@ -101,15 +74,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
-              <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
-            </a>
-            <a
-              href="https://twitter.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <FontAwesomeIcon icon={faTwitter} className="h-5 w-5" />
+              <FontAwesomeIcon icon={faGithub} className="text-xl" />
             </a>
           </div>
         </div>
