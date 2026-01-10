@@ -66,6 +66,11 @@ export interface ImageDimensions {
   height: number;
 }
 
+export interface PngSourceMetadata {
+  dpi: number | null; // null if not specified in PNG
+  colorDepth: PngColorDepth; // Effective color depth (8, 24, or 32)
+}
+
 export interface UploadedFile {
   file: File;
   name: string;
@@ -73,6 +78,7 @@ export interface UploadedFile {
   dataUrl: string;
   type: SourceFileType;
   dimensions?: ImageDimensions; // Only set for PNG files
+  pngMetadata?: PngSourceMetadata; // Only set for PNG files
 }
 
 // Icon sizes used in output formats

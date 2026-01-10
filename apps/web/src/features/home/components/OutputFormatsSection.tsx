@@ -1,5 +1,5 @@
 import { faApple, faWindows } from '@fortawesome/free-brands-svg-icons';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faImage, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const formats = [
@@ -25,11 +25,18 @@ const formats = [
       'Retina display optimized',
     ],
   },
+  {
+    icon: faImage,
+    iconColor: 'text-primary',
+    title: '.PNG Format',
+    description: 'High-quality PNG export with flexible options',
+    features: ['Custom sizes from 16x16 to 1024x1024', 'Configurable DPI, color space & bit depth'],
+  },
 ];
 
 export function OutputFormatsSection() {
   return (
-    <section className="flex w-full max-w-4xl flex-col items-center gap-8 rounded-2xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to px-8 pb-8 pt-16">
+    <section className="flex w-full max-w-6xl flex-col items-center gap-8 rounded-2xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to px-8 pb-8 pt-16">
       <h2 className="text-center text-2xl font-bold text-foreground">Supported Output Formats</h2>
       <div className="flex w-full justify-center gap-8">
         {formats.map((format) => (
@@ -52,6 +59,31 @@ export function OutputFormatsSection() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Background Removal Feature Card */}
+      <div className="flex w-full flex-col gap-4 rounded-xl bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-3">
+          <FontAwesomeIcon icon={faWandMagicSparkles} className="h-7 w-7 text-primary" />
+          <span className="text-xl font-bold text-foreground">Intelligent Background Removal</span>
+        </div>
+        <p className="text-sm leading-5 text-muted-foreground">
+          Automatically detect and remove backgrounds from PNG images with smart edge detection and transparency preservation.
+        </p>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faCheck} className="h-3 w-3 text-success" />
+            <span className="text-sm text-muted-foreground">Locally-Processed edge detection</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faCheck} className="h-3 w-3 text-success" />
+            <span className="text-sm text-muted-foreground">Preserves fine details</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faCheck} className="h-3 w-3 text-success" />
+            <span className="text-sm text-muted-foreground">Clean transparent output</span>
+          </div>
+        </div>
       </div>
     </section>
   );

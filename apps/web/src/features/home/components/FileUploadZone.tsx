@@ -1,4 +1,5 @@
-import type { UploadedFile } from '@/features/convert/types';
+import type { PngColorDepth, UploadedFile } from '@/features/convert/types';
+import { parsePngMetadataFromFile } from '@/features/convert/utils/pngMetadata';
 import { faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useRef, useState } from 'react';
@@ -30,9 +31,12 @@ export function FileUploadZone() {
         const dataUrl = e.target?.result as string;
 
         if (isPng) {
-          // For PNG files, we need to read dimensions before navigating
+          // For PNG files, we need to read dimensions and metadata before navigating
           const img = new Image();
-          img.onload = () => {
+          img.onload = async () => {
+            // Parse PNG metadata for DPI and color depth
+            const metadata = await parsePngMetadataFromFile(file);
+
             const uploadedFile: UploadedFile = {
               file,
               name: file.name,
@@ -43,6 +47,12 @@ export function FileUploadZone() {
                 width: img.naturalWidth,
                 height: img.naturalHeight,
               },
+              pngMetadata: metadata
+                ? {
+                    dpi: metadata.dpi,
+                    colorDepth: metadata.effectiveBitDepth as PngColorDepth,
+                  }
+                : undefined,
             };
             navigate('/convert', { state: { file: uploadedFile } });
           };
@@ -107,7 +117,7 @@ export function FileUploadZone() {
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-lg">
       <div
-        className={`flex flex-col items-center gap-4 rounded-xl border-2 border-dashed p-12 transition-colors ${
+        className={`flex flex-col items-center gap-4 rounded-xl border-2 border-dashed px-12 py-4 transition-colors ${
           isDragging ? 'border-primary/50 bg-primary/5' : 'border-border bg-secondary'
         }`}
         onDragOver={handleDragOver}
@@ -118,12 +128,14 @@ export function FileUploadZone() {
           <FontAwesomeIcon icon={faCloudArrowUp} className="h-8 w-8 text-muted-foreground" />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-lg font-medium text-foreground">Drag & drop your SVG or PNG here</span>
+          <span className="text-lg font-medium text-foreground">
+            Drag & drop your SVG or PNG here
+          </span>
           <span className="text-sm text-muted-foreground">or</span>
           <button
             type="button"
             onClick={handleFileSelect}
-            className="cursor-pointer pt-1 text-base font-medium text-primary transition-colors hover:text-primary/80"
+            className="mt-2 cursor-pointer rounded-lg bg-linear-to-br from-gradient-success-from to-gradient-success-to px-6 py-2 text-base font-medium text-white shadow-md transition-opacity hover:opacity-90"
           >
             Browse Files
           </button>

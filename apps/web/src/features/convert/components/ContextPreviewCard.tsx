@@ -68,9 +68,9 @@ const previewConfigs: PreviewConfig[] = [
     label: 'macOS Dock',
     path: '/previews/macos_light.svg',
     theme: 'light',
-    placements: [{ id: 'dock', x: 911, y: 149, width: 255, height: 255 }],
+    placements: [{ id: 'dock', x: 1682.04, y: 168.5, width: 255, height: 255 }],
     placeholderPatterns: [
-      '<rect width="255" height="255" transform="translate(911 149)" fill="black"/>',
+      '<rect width="255" height="255" transform="translate(1682.04 168.5)" fill="black"/>',
     ],
   },
   // Dark mode configs
@@ -109,9 +109,9 @@ const previewConfigs: PreviewConfig[] = [
     label: 'macOS Dock',
     path: '/previews/macos_dark.svg',
     theme: 'dark',
-    placements: [{ id: 'dock', x: 911, y: 149, width: 255, height: 255 }],
+    placements: [{ id: 'dock', x: 1682.04, y: 168.5, width: 255, height: 255 }],
     placeholderPatterns: [
-      '<rect width="255" height="255" transform="translate(911 149)" fill="black"/>',
+      '<rect width="255" height="255" transform="translate(1682.04 168.5)" fill="black"/>',
     ],
   },
 ];
@@ -129,7 +129,7 @@ function removeBlackPlaceholders(svgContent: string, patterns: string[]): string
 const previewAspectRatios: Record<string, string> = {
   chrome: 'aspect-[512/111]',
   windows: 'aspect-[512/49]',
-  macos: 'aspect-[1408/541]',
+  macos: 'aspect-[2349/580]',
 };
 
 export function ContextPreviewCard({

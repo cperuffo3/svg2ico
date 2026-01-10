@@ -105,6 +105,42 @@ export function ConvertPage() {
   const debouncedScale = useDebouncedValue(options.scale, 150);
   const debouncedCornerRadius = useDebouncedValue(options.cornerRadius, 150);
 
+  // Clamp PNG options when source PNG has constraints
+  useEffect(() => {
+    if (!uploadedFile || uploadedFile.type !== 'png') return;
+
+    const { pngMetadata, dimensions } = uploadedFile;
+    if (!pngMetadata && !dimensions) return;
+
+    setOptions((prev) => {
+      const newPngOptions = { ...prev.pngOptions };
+      let changed = false;
+
+      // Clamp size to source dimensions
+      if (dimensions) {
+        const maxSize = Math.min(dimensions.width, dimensions.height);
+        if (newPngOptions.size > maxSize) {
+          newPngOptions.size = maxSize;
+          changed = true;
+        }
+      }
+
+      // Clamp DPI to source DPI (if available)
+      if (pngMetadata?.dpi && newPngOptions.dpi > pngMetadata.dpi) {
+        newPngOptions.dpi = pngMetadata.dpi;
+        changed = true;
+      }
+
+      // Clamp color depth to source color depth
+      if (pngMetadata && newPngOptions.colorDepth > pngMetadata.colorDepth) {
+        newPngOptions.colorDepth = pngMetadata.colorDepth;
+        changed = true;
+      }
+
+      return changed ? { ...prev, pngOptions: newPngOptions } : prev;
+    });
+  }, [uploadedFile]);
+
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
@@ -530,6 +566,7 @@ export function ConvertPage() {
                     value={options.pngOptions}
                     onChange={handlePngOptionsChange}
                     maxSize={isPng && sourceSize ? sourceSize : undefined}
+                    sourceMetadata={isPng ? uploadedFile.pngMetadata : undefined}
                   />
                 </div>
               </>

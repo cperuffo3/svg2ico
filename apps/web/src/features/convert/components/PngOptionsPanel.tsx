@@ -7,7 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { PngColorDepth, PngColorspace, PngOutputOptions } from '../types';
+import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import type { PngColorDepth, PngColorspace, PngOutputOptions, PngSourceMetadata } from '../types';
 
 const COLORSPACE_OPTIONS = [
   { value: 'srgb', label: 'sRGB', description: 'Standard' },
@@ -25,9 +27,21 @@ interface PngOptionsPanelProps {
   value: PngOutputOptions;
   onChange: (value: PngOutputOptions) => void;
   maxSize?: number;
+  sourceMetadata?: PngSourceMetadata; // Constraints from source PNG
 }
 
-export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelProps) {
+export function PngOptionsPanel({ value, onChange, maxSize, sourceMetadata }: PngOptionsPanelProps) {
+  // Calculate max DPI based on source PNG metadata
+  // If source has DPI metadata, we can't output higher DPI than source
+  const maxDpi = sourceMetadata?.dpi ?? 600;
+
+  // Filter color depth options based on source PNG
+  // Can't output higher color depth than source has
+  const availableColorDepths = COLOR_DEPTH_OPTIONS.filter((option) => {
+    if (!sourceMetadata) return true; // No restrictions for SVG
+    return option.value <= sourceMetadata.colorDepth;
+  });
+
   const handleSizeChange = (size: number | undefined) => {
     if (size !== undefined) {
       onChange({ ...value, size });
@@ -36,7 +50,9 @@ export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelPro
 
   const handleDpiChange = (dpi: number | undefined) => {
     if (dpi !== undefined) {
-      onChange({ ...value, dpi });
+      // Clamp DPI to max allowed
+      const clampedDpi = Math.min(dpi, maxDpi);
+      onChange({ ...value, dpi: clampedDpi });
     }
   };
 
@@ -49,6 +65,7 @@ export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelPro
   };
 
   const effectiveMaxSize = maxSize ? Math.min(maxSize, 2048) : 2048;
+  const effectiveMaxDpi = Math.min(maxDpi, 600);
 
   return (
     <div className="flex w-52 shrink-0 flex-col gap-4">
@@ -70,7 +87,10 @@ export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelPro
           placeholder="512"
         />
         {maxSize && maxSize < 2048 && (
-          <span className="text-[10px] text-muted-foreground">Max: {maxSize}px</span>
+          <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="h-2.5 w-2.5" />
+            Max: {maxSize}px (source size)
+          </span>
         )}
       </div>
 
@@ -84,11 +104,18 @@ export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelPro
           value={value.dpi}
           onValueChange={handleDpiChange}
           min={1}
-          max={600}
+          max={effectiveMaxDpi}
           stepper={1}
           placeholder="72"
         />
-        <span className="text-[10px] text-muted-foreground">72 web · 96 Win · 300 print</span>
+        {sourceMetadata?.dpi ? (
+          <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="h-2.5 w-2.5" />
+            Max: {effectiveMaxDpi} DPI (source)
+          </span>
+        ) : (
+          <span className="text-[10px] text-muted-foreground">72 web · 96 Win · 300 print</span>
+        )}
       </div>
 
       {/* Colorspace */}
@@ -120,13 +147,19 @@ export function PngOptionsPanel({ value, onChange, maxSize }: PngOptionsPanelPro
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            {COLOR_DEPTH_OPTIONS.map((option) => (
+            {availableColorDepths.map((option) => (
               <SelectItem key={option.value} value={option.value.toString()}>
                 {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {sourceMetadata && availableColorDepths.length < COLOR_DEPTH_OPTIONS.length && (
+          <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="h-2.5 w-2.5" />
+            Max: {sourceMetadata.colorDepth}-bit (source)
+          </span>
+        )}
       </div>
 
       {/* Output summary */}
