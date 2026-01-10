@@ -8,19 +8,10 @@ updates:
       day: "monday"
     open-pull-requests-limit: 10
     groups:
-      typescript:
-        patterns:
-          - "typescript"
-          - "@types/*"
-      turbo:
-        patterns:
-          - "turbo"
-      dev-dependencies:
-        dependency-type: "development"
-        exclude-patterns:
-          - "typescript"
-          - "@types/*"
-          - "turbo"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # API app
   - package-ecosystem: "npm"
@@ -30,14 +21,10 @@ updates:
       day: "monday"
     open-pull-requests-limit: 10
     groups:
-      nestjs:
-        patterns:
-          - "@nestjs/*"
-      drizzle:
-        patterns:
-          - "drizzle-*"
-      dev-dependencies:
-        dependency-type: "development"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # Web app
   - package-ecosystem: "npm"
@@ -47,17 +34,10 @@ updates:
       day: "monday"
     open-pull-requests-limit: 10
     groups:
-      react:
-        patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react*"
-      vite:
-        patterns:
-          - "vite"
-          - "@vitejs/*"
-      dev-dependencies:
-        dependency-type: "development"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -66,3 +46,8 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
