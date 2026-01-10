@@ -64,7 +64,8 @@
       "Bash(powershell -Command \"try { $response = Invoke-WebRequest -Uri ''http://localhost:5173'' -Method Head -UseBasicParsing; $response.Headers } catch { Write-Host $_Exception.Message }\")",
       "Bash(powershell -Command \"Invoke-WebRequest -Uri ''http://localhost:5173'' -Method Head -UseBasicParsing | Select-Object -ExpandProperty Headers\")",
       "Bash(powershell -Command \"Invoke-WebRequest -Uri ''http://localhost:5173/'' -UseBasicParsing | Select-Object -ExpandProperty Headers | Format-Table -AutoSize\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(node -p:*)"
     ],
     "deny": [
       "Bash(git add:*)",
@@ -84,6 +85,9 @@
       "Bash(git clean:*)",
       "Bash(git rm:*)"
     ],
-    "ask": ["Bash(rm:*)", "Bash(pnpm approve-builds:*)"]
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(pnpm approve-builds:*)"
+    ]
   }
 }

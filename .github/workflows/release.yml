@@ -64,8 +64,14 @@ jobs:
       - name: Create GitHub Release
         if: steps.changesets.outputs.has_changesets == 'true'
         run: |
-          # Extract version from root package.json
-          VERSION=$(node -p "require('./package.json').version")
+          # Extract version from api package (root is private and not versioned)
+          VERSION=$(node -p "require('./apps/api/package.json').version")
+
+          # Check if tag already exists
+          if git ls-remote --tags origin | grep -q "refs/tags/v$VERSION"; then
+            echo "Tag v$VERSION already exists, skipping release creation"
+            exit 0
+          fi
 
           # Create a release with the changelog section
           gh release create "v$VERSION" \
