@@ -4,6 +4,7 @@
 ---
 
 **Backend:**
+
 - Add SVG to ICO/ICNS/PNG conversion API with multi-size support
 - Add worker pool for parallel image processing with job queue
 - Add SVG sanitization and security validation
@@ -12,6 +13,7 @@
 - Add metrics tracking for conversions and performance
 
 **Frontend:**
+
 - Add home page with file upload zone and feature overview
 - Add conversion page with SVG preview and output format selection
 - Add context previews showing icons in Windows, macOS, and Chrome contexts
@@ -21,5 +23,6 @@
 - Add privacy policy and terms of service pages
 
 **DevOps:**
+
 - Add Prisma migrations for conversion tracking schema
 - Add database seed script with sample data

@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { faArrowLeft, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AdminLogin,
@@ -31,13 +31,6 @@ export function AdminPage() {
     setLoginError('Invalid password');
     clearPassword();
   };
-
-  // Clear login error when successfully authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLoginError(undefined);
-    }
-  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return <AdminLogin onLogin={handleLogin} error={loginError} />;

@@ -63,7 +63,7 @@ export class ConversionService {
 
     // Validate and sanitize based on source type
     if (sourceType === 'svg') {
-      let svgString = inputBuffer.toString('utf-8');
+      const svgString = inputBuffer.toString('utf-8');
 
       if (!this.isValidSvg(svgString)) {
         this.logger.warn(`Rejected invalid SVG: ${originalFilename}`);
@@ -93,7 +93,9 @@ export class ConversionService {
 
         // Additional check for dangerous patterns after sanitization
         if (containsDangerousPatterns(sanitizeResult.sanitized)) {
-          this.logger.warn(`SVG still contains dangerous patterns after sanitization: ${originalFilename}`);
+          this.logger.warn(
+            `SVG still contains dangerous patterns after sanitization: ${originalFilename}`,
+          );
           throw new BadRequestException(
             'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
           );

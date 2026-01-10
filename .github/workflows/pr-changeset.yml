@@ -1,0 +1,161 @@
+name: PR Changeset
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - master
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  update-pr:
+    name: Update PR from Changeset
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          # Find changeset files (excluding README)
+          files=$(find .changeset -name "*.md" ! -name "README.md" 2>/dev/null | tr '\n' ' ' | xargs)
+          if [ -z "$files" ]; then
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "::error::No changeset found in this PR. Please run 'pnpm changeset' to create one."
+            exit 1
+          else
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "files=$files" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Parse changesets and update PR
+        if: steps.changesets.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            // Get changeset files
+            const files = execSync('find .changeset -name "*.md" ! -name "README.md"')
+              .toString()
+              .trim()
+              .split('\n')
+              .filter(Boolean);
+
+            if (files.length === 0) {
+              core.setFailed('No changeset files found');
+              return;
+            }
+
+            let allPackages = new Set();
+            let allDescriptions = [];
+            let highestBumpType = 'patch';
+            const bumpOrder = { patch: 0, minor: 1, major: 2 };
+
+            for (const file of files) {
+              const content = fs.readFileSync(file, 'utf8');
+
+              // Parse frontmatter
+              const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+              if (!frontmatterMatch) {
+                console.log(`Skipping ${file}: no valid frontmatter`);
+                continue;
+              }
+
+              const [, frontmatter, description] = frontmatterMatch;
+
+              // Parse packages and bump types from frontmatter
+              const lines = frontmatter.trim().split('\n');
+              for (const line of lines) {
+                const match = line.match(/^['"]?([^'"]+)['"]?\s*:\s*(patch|minor|major)$/);
+                if (match) {
+                  const [, pkg, bumpType] = match;
+                  allPackages.add(pkg);
+                  if (bumpOrder[bumpType] > bumpOrder[highestBumpType]) {
+                    highestBumpType = bumpType;
+                  }
+                }
+              }
+
+              // Collect description
+              const trimmedDescription = description.trim();
+              if (trimmedDescription) {
+                allDescriptions.push(trimmedDescription);
+              }
+            }
+
+            if (allPackages.size === 0) {
+              core.setFailed('No valid package changes found in changesets');
+              return;
+            }
+
+            // Generate PR title
+            const bumpEmoji = { patch: '🔧', minor: '✨', major: '🚀' };
+            const bumpLabel = { patch: 'fix', minor: 'feat', major: 'breaking' };
+
+            // Extract first line or summary for title
+            let titleSummary = '';
+            if (allDescriptions.length > 0) {
+              const firstDesc = allDescriptions[0];
+              const firstLine = firstDesc.split('\n').find(line => {
+                const trimmed = line.trim();
+                return trimmed && !trimmed.startsWith('**') && !trimmed.startsWith('-') && !trimmed.startsWith('#');
+              });
+
+              if (firstLine) {
+                titleSummary = firstLine.trim().substring(0, 50);
+                if (firstLine.length > 50) titleSummary += '...';
+              } else {
+                const bulletMatch = firstDesc.match(/^-\s+(.+)$/m);
+                if (bulletMatch) {
+                  titleSummary = bulletMatch[1].substring(0, 50);
+                  if (bulletMatch[1].length > 50) titleSummary += '...';
+                }
+              }
+            }
+
+            const packagesStr = Array.from(allPackages).map(p => p.replace('@svg2ico/', '')).join(', ');
+            const title = titleSummary
+              ? `${bumpLabel[highestBumpType]}(${packagesStr}): ${titleSummary}`
+              : `${bumpLabel[highestBumpType]}(${packagesStr}): update packages`;
+
+            // Generate PR body
+            const packagesFormatted = Array.from(allPackages).map(p => '`' + p + '`').join(', ');
+            const bodyLines = [
+              '## ' + bumpEmoji[highestBumpType] + ' Changeset Summary',
+              '',
+              '**Bump Type:** `' + highestBumpType + '`',
+              '**Affected Packages:** ' + packagesFormatted,
+              '',
+              '---',
+              '',
+              '## Changes',
+              '',
+              allDescriptions.join('\n\n---\n\n'),
+              '',
+              '---',
+              '',
+              '*This PR description was automatically generated from changeset files.*'
+            ];
+            const body = bodyLines.join('\n');
+
+            // Update PR
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              title: title,
+              body: body
+            });
+
+            console.log(`Updated PR #${context.payload.pull_request.number}`);
+            console.log(`Title: ${title}`);
