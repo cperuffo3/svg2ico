@@ -4,6 +4,11 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
+import {
+  containsDangerousPatterns,
+  isQuickSafe,
+  sanitizeSvg,
+} from '../../common/security/index.js';
 import { WorkerPoolService } from '../workers/worker-pool.service.js';
 import type {
   BackgroundRemovalMode,
@@ -56,13 +61,50 @@ export class ConversionService {
       `Received conversion request: ${originalFilename} (${this.formatBytes(inputSize)}, type: ${sourceType})`,
     );
 
-    // Validate based on source type
+    // Validate and sanitize based on source type
     if (sourceType === 'svg') {
-      const svgString = inputBuffer.toString('utf-8');
+      let svgString = inputBuffer.toString('utf-8');
+
       if (!this.isValidSvg(svgString)) {
         this.logger.warn(`Rejected invalid SVG: ${originalFilename}`);
         throw new BadRequestException(
           'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+        );
+      }
+
+      // Quick security check for obviously malicious content
+      if (!isQuickSafe(svgString)) {
+        this.logger.warn(`Rejected SVG with dangerous patterns: ${originalFilename}`);
+        throw new BadRequestException(
+          'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
+        );
+      }
+
+      // Full sanitization to remove XSS, XXE, and other threats
+      try {
+        const sanitizeResult = sanitizeSvg(svgString);
+        if (sanitizeResult.wasModified) {
+          this.logger.debug(
+            `SVG sanitized for ${originalFilename}: removed ${sanitizeResult.removedElements.join(', ') || 'unsafe content'}`,
+          );
+          // Use sanitized content for conversion
+          inputBuffer = Buffer.from(sanitizeResult.sanitized, 'utf-8');
+        }
+
+        // Additional check for dangerous patterns after sanitization
+        if (containsDangerousPatterns(sanitizeResult.sanitized)) {
+          this.logger.warn(`SVG still contains dangerous patterns after sanitization: ${originalFilename}`);
+          throw new BadRequestException(
+            'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
+          );
+        }
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        this.logger.warn(`SVG sanitization failed for ${originalFilename}: ${error}`);
+        throw new BadRequestException(
+          'The uploaded SVG could not be processed due to security validation. Please try a different file.',
         );
       }
     } else if (sourceType === 'png') {
