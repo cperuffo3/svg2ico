@@ -1,6 +1,8 @@
 import type {
   BackgroundRemovalMode,
   OutputFormat,
+  PngColorDepth,
+  PngColorspace,
   RoundnessValue,
   SourceFileType,
 } from '../../conversion/dto/convert.dto.js';
@@ -21,6 +23,9 @@ export interface ConversionJobData {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  pngDpi?: number; // DPI for PNG output
+  pngColorspace?: PngColorspace; // Colorspace for PNG output
+  pngColorDepth?: PngColorDepth; // Color depth for PNG output (8, 24, or 32 bit)
   sourceDimensions?: SourceDimensions; // For PNG input, dimensions to limit output sizes
 }
 

@@ -8,6 +8,8 @@ import { WorkerPoolService } from '../workers/worker-pool.service.js';
 import type {
   BackgroundRemovalMode,
   OutputFormat,
+  PngColorDepth,
+  PngColorspace,
   RoundnessValue,
   SourceFileType,
 } from './dto/convert.dto.js';
@@ -29,6 +31,9 @@ export interface ConversionOptions {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  pngDpi?: number;
+  pngColorspace?: PngColorspace;
+  pngColorDepth?: PngColorDepth;
   sourceDimensions?: SourceDimensions;
 }
 
@@ -89,6 +94,9 @@ export class ConversionService {
         backgroundRemovalMode: options.backgroundRemovalMode,
         backgroundRemovalColor: options.backgroundRemovalColor,
         outputSize: options.outputSize,
+        pngDpi: options.pngDpi,
+        pngColorspace: options.pngColorspace,
+        pngColorDepth: options.pngColorDepth,
         sourceDimensions: options.sourceDimensions,
       });
 

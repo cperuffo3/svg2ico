@@ -3,7 +3,12 @@ import { Resvg } from '@resvg/resvg-js';
 import sharp from 'sharp';
 import { encode as encodeIco } from 'sharp-ico';
 import { parentPort, threadId } from 'worker_threads';
-import type { RoundnessValue, SourceFileType } from '../conversion/dto/convert.dto.js';
+import type {
+  PngColorDepth,
+  PngColorspace,
+  RoundnessValue,
+  SourceFileType,
+} from '../conversion/dto/convert.dto.js';
 import { processSvg } from '../conversion/svg-processor.js';
 import type {
   ConversionJobData,
@@ -151,6 +156,9 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
     cornerRadius,
     backgroundRemovalMode,
     outputSize,
+    pngDpi,
+    pngColorspace,
+    pngColorDepth,
     sourceDimensions,
   } = data;
 
@@ -236,13 +244,20 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
 
     // Convert based on format
     if (format === 'png') {
-      log('debug', `Converting to PNG (${outputSize}x${outputSize}px)`, jobId);
+      log(
+        'debug',
+        `Converting to PNG (${outputSize}x${outputSize}px, ${pngDpi ?? 72} DPI, ${pngColorspace ?? 'srgb'}, ${pngColorDepth ?? 32}-bit)`,
+        jobId,
+      );
       const pngResult = await convertToPng(
         conversionContext,
         baseName,
         scale,
         cornerRadius,
         outputSize,
+        pngDpi,
+        pngColorspace,
+        pngColorDepth,
         jobId,
       );
       log('verbose', `PNG output size: ${formatBytes(pngResult.buffer.length)}`, jobId);
@@ -337,7 +352,17 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
         );
       }
       conversionPromises.push(
-        convertToPng(conversionContext, 'icon', scale, cornerRadius, maxPngSize, jobId),
+        convertToPng(
+          conversionContext,
+          'icon',
+          scale,
+          cornerRadius,
+          maxPngSize,
+          undefined,
+          undefined,
+          undefined,
+          jobId,
+        ),
       );
 
       const formatResults = await Promise.all(conversionPromises);
@@ -417,7 +442,7 @@ function createRoundedMask(size: number, cornerRadiusPercent: RoundnessValue): B
 }
 
 /**
- * Convert source to PNG format
+ * Convert source to PNG format with DPI, colorspace, and color depth options
  */
 async function convertToPng(
   context: ConversionContext,
@@ -425,12 +450,60 @@ async function convertToPng(
   scale: number,
   cornerRadius: RoundnessValue,
   outputSize: number,
+  pngDpi?: number,
+  pngColorspace?: PngColorspace,
+  pngColorDepth?: PngColorDepth,
   jobId?: string,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
     const [pngBuffer] = await renderToPngs(context, [outputSize], scale, cornerRadius, jobId);
+
+    // Apply DPI, colorspace, and color depth transformations
+    const dpi = pngDpi ?? 72;
+    const colorspace = pngColorspace ?? 'srgb';
+    const colorDepth = pngColorDepth ?? 32;
+
+    let sharpInstance = sharp(pngBuffer);
+
+    // Apply colorspace transformation
+    if (colorspace === 'p3') {
+      // Display P3 wide gamut colorspace
+      sharpInstance = sharpInstance.toColorspace('p3');
+    } else if (colorspace === 'cmyk') {
+      // CMYK for print
+      sharpInstance = sharpInstance.toColorspace('cmyk');
+    }
+    // srgb is the default, no transformation needed
+
+    // Configure PNG options based on color depth
+    // 8-bit = indexed palette (256 colors)
+    // 24-bit = truecolor RGB (no alpha)
+    // 32-bit = truecolor RGBA (with alpha)
+    let pngOptions: sharp.PngOptions = {};
+    if (colorDepth === 8) {
+      // 8-bit indexed color (256 colors max)
+      pngOptions = { palette: true, colours: 256 };
+    } else if (colorDepth === 24) {
+      // 24-bit truecolor without alpha - flatten to remove transparency
+      sharpInstance = sharpInstance.flatten({ background: { r: 255, g: 255, b: 255 } });
+      pngOptions = {};
+    }
+    // 32-bit is default (RGBA with full alpha support)
+
+    // Apply DPI metadata and generate final PNG
+    const finalBuffer = await sharpInstance
+      .withMetadata({ density: dpi })
+      .png(pngOptions)
+      .toBuffer();
+
+    log(
+      'verbose',
+      `Applied PNG settings: ${dpi} DPI, ${colorspace} colorspace, ${colorDepth}-bit color`,
+      jobId,
+    );
+
     return {
-      buffer: pngBuffer,
+      buffer: finalBuffer,
       filename: `${baseName}.png`,
       mimeType: 'image/png',
     };

@@ -147,91 +147,95 @@ export function BackgroundRemovalSelector({
         </OptionButton>
       </div>
 
-      {/* Color picker - only shown when 'color' mode is selected */}
-      {value.mode === 'color' && (
-        <div className="flex flex-col gap-2 pt-1">
-          <span className="text-xs text-muted-foreground">
-            Select the background color to remove:
-          </span>
-          <div className="flex items-center gap-2">
-            {/* Preset color swatches */}
-            {presetColors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => handlePresetColorClick(color)}
-                className={cn(
-                  'h-8 w-8 rounded border-2 transition-all cursor-pointer',
-                  customColor.toLowerCase() === color.toLowerCase()
-                    ? 'border-primary scale-105'
-                    : 'border-border hover:border-muted-foreground',
-                )}
-                style={{ backgroundColor: color }}
-                title={color.toUpperCase()}
-              />
-            ))}
-
-            {/* Color swatch button that opens popover */}
-            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-              <PopoverTrigger asChild>
+      {/* Reserve space for conditional content to prevent layout shift */}
+      {/* Height: color picker ~68px (text + swatches), smart mode ~36px (text), min-h-17 = 68px */}
+      <div className="min-h-17">
+        {/* Color picker - only shown when 'color' mode is selected */}
+        {value.mode === 'color' && (
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">
+              Select the background color to remove:
+            </span>
+            <div className="flex items-center gap-2">
+              {/* Preset color swatches */}
+              {presetColors.map((color) => (
                 <button
+                  key={color}
                   type="button"
+                  onClick={() => handlePresetColorClick(color)}
                   className={cn(
                     'h-8 w-8 rounded border-2 transition-all cursor-pointer',
-                    isPopoverOpen
+                    customColor.toLowerCase() === color.toLowerCase()
                       ? 'border-primary scale-105'
                       : 'border-border hover:border-muted-foreground',
-                    // Hide border highlight if it matches a preset
-                    !presetColors.some((c) => c.toLowerCase() === customColor.toLowerCase()) &&
-                      'border-primary',
                   )}
-                  style={{ backgroundColor: customColor }}
-                  title="Open color picker"
+                  style={{ backgroundColor: color }}
+                  title={color.toUpperCase()}
                 />
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="start">
-                <ColorPicker
-                  key={pickerKey}
-                  value={customColor}
-                  onChange={handleColorPickerChange}
-                  className="gap-3"
-                >
-                  <ColorPickerSelection className="h-32" />
-                  <div className="flex items-center gap-3">
-                    <ColorPickerEyeDropper />
-                    <div className="grid w-full gap-1.5">
-                      <ColorPickerHue />
-                      <ColorPickerAlpha />
+              ))}
+
+              {/* Color swatch button that opens popover */}
+              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'h-8 w-8 rounded border-2 transition-all cursor-pointer',
+                      isPopoverOpen
+                        ? 'border-primary scale-105'
+                        : 'border-border hover:border-muted-foreground',
+                      // Hide border highlight if it matches a preset
+                      !presetColors.some((c) => c.toLowerCase() === customColor.toLowerCase()) &&
+                        'border-primary',
+                    )}
+                    style={{ backgroundColor: customColor }}
+                    title="Open color picker"
+                  />
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <ColorPicker
+                    key={pickerKey}
+                    value={customColor}
+                    onChange={handleColorPickerChange}
+                    className="gap-3"
+                  >
+                    <ColorPickerSelection className="h-32" />
+                    <div className="flex items-center gap-3">
+                      <ColorPickerEyeDropper />
+                      <div className="grid w-full gap-1.5">
+                        <ColorPickerHue />
+                        <ColorPickerAlpha />
+                      </div>
                     </div>
-                  </div>
-                </ColorPicker>
-              </PopoverContent>
-            </Popover>
+                  </ColorPicker>
+                </PopoverContent>
+              </Popover>
 
-            {/* Editable hex input */}
-            <input
-              type="text"
-              value={hexInputValue}
-              onChange={handleHexInputChange}
-              onBlur={handleHexInputBlur}
-              className={cn(
-                'h-8 w-24 rounded-md border border-border bg-card px-2 text-xs font-mono uppercase',
-                'focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary',
-                !isValidHex(hexInputValue) && hexInputValue !== '' && 'border-destructive',
-              )}
-              placeholder="#ffffff"
-              maxLength={7}
-            />
+              {/* Editable hex input */}
+              <input
+                type="text"
+                value={hexInputValue}
+                onChange={handleHexInputChange}
+                onBlur={handleHexInputBlur}
+                className={cn(
+                  'h-8 w-24 rounded-md border border-border bg-card px-2 text-xs font-mono uppercase',
+                  'focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary',
+                  !isValidHex(hexInputValue) && hexInputValue !== '' && 'border-destructive',
+                )}
+                placeholder="#ffffff"
+                maxLength={7}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Smart mode description */}
-      {value.mode === 'smart' && (
-        <p className="text-xs text-muted-foreground pt-1 max-w-75 text-center">
-          Automatically detects and removes background elements that span the entire viewbox.
-        </p>
-      )}
+        {/* Smart mode description */}
+        {value.mode === 'smart' && (
+          <p className="text-xs text-muted-foreground pt-1 max-w-75 text-center">
+            Automatically detects and removes background elements that span the entire viewbox.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

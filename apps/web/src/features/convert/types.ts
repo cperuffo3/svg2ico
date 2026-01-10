@@ -1,4 +1,17 @@
-export type OutputFormat = 'ico' | 'icns' | 'favicon' | 'all';
+export type OutputFormat = 'ico' | 'icns' | 'favicon' | 'all' | 'png';
+
+export type PngColorspace = 'srgb' | 'p3' | 'cmyk';
+
+// Color depth options for PNG output
+// 8-bit = 256 colors (indexed), 24-bit = 16.7M colors (truecolor), 32-bit = truecolor + alpha
+export type PngColorDepth = 8 | 24 | 32;
+
+export interface PngOutputOptions {
+  size: number; // 16-2048px
+  dpi: number; // Custom DPI (1-600)
+  colorspace: PngColorspace;
+  colorDepth: PngColorDepth;
+}
 
 export type ConversionStep = {
   id: string;
@@ -36,7 +49,15 @@ export interface ConversionOptions {
   backgroundRemoval: BackgroundRemovalOption;
   cornerRadius: RoundnessValue;
   outputFormat: OutputFormat;
+  pngOptions: PngOutputOptions;
 }
+
+export const DEFAULT_PNG_OPTIONS: PngOutputOptions = {
+  size: 512,
+  dpi: 72,
+  colorspace: 'srgb',
+  colorDepth: 32,
+};
 
 export type SourceFileType = 'svg' | 'png';
 

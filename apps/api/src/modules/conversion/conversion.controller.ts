@@ -22,6 +22,8 @@ import {
   ConvertOptionsDto,
   type BackgroundRemovalMode,
   type OutputFormat,
+  type PngColorDepth,
+  type PngColorspace,
   type RoundnessValue,
 } from './dto/convert.dto.js';
 
@@ -86,9 +88,29 @@ export class ConversionController {
         outputSize: {
           type: 'number',
           minimum: 16,
-          maximum: 1024,
+          maximum: 2048,
           default: 512,
           description: 'Output size in pixels (for PNG format)',
+        },
+        pngDpi: {
+          type: 'number',
+          minimum: 1,
+          maximum: 600,
+          default: 72,
+          description: 'DPI/resolution for PNG output (1-600)',
+        },
+        pngColorspace: {
+          type: 'string',
+          enum: ['srgb', 'p3', 'cmyk'],
+          default: 'srgb',
+          description: 'Colorspace for PNG output',
+        },
+        pngColorDepth: {
+          type: 'number',
+          enum: [8, 24, 32],
+          default: 32,
+          description:
+            'Color depth for PNG output (8=256 colors, 24=truecolor, 32=truecolor+alpha)',
         },
         sourceWidth: {
           type: 'number',
@@ -145,6 +167,9 @@ export class ConversionController {
       backgroundRemovalMode: this.parseBackgroundRemovalMode(options.backgroundRemovalMode),
       backgroundRemovalColor: options.backgroundRemovalColor,
       outputSize: this.parseOutputSize(options.outputSize),
+      pngDpi: this.parsePngDpi(options.pngDpi),
+      pngColorspace: this.parsePngColorspace(options.pngColorspace),
+      pngColorDepth: this.parsePngColorDepth(options.pngColorDepth),
       sourceDimensions,
     };
 
@@ -236,10 +261,35 @@ export class ConversionController {
 
   private parseOutputSize(size: string | number | undefined): number {
     const parsed = typeof size === 'string' ? parseInt(size, 10) : (size ?? 512);
-    if (isNaN(parsed) || parsed < 16 || parsed > 1024) {
-      throw new BadRequestException('Output size must be between 16 and 1024');
+    if (isNaN(parsed) || parsed < 16 || parsed > 2048) {
+      throw new BadRequestException('Output size must be between 16 and 2048');
     }
     return parsed;
+  }
+
+  private parsePngDpi(dpi: string | number | undefined): number {
+    const parsed = typeof dpi === 'string' ? parseInt(dpi, 10) : (dpi ?? 72);
+    if (isNaN(parsed) || parsed < 1 || parsed > 600) {
+      throw new BadRequestException('PNG DPI must be between 1 and 600');
+    }
+    return parsed;
+  }
+
+  private parsePngColorspace(colorspace: string | undefined): PngColorspace {
+    const normalized = (colorspace || 'srgb').toLowerCase();
+    if (!['srgb', 'p3', 'cmyk'].includes(normalized)) {
+      throw new BadRequestException('PNG colorspace must be "srgb", "p3", or "cmyk"');
+    }
+    return normalized as PngColorspace;
+  }
+
+  private parsePngColorDepth(colorDepth: string | number | undefined): PngColorDepth {
+    const parsed = typeof colorDepth === 'string' ? parseInt(colorDepth, 10) : (colorDepth ?? 32);
+    const validValues: PngColorDepth[] = [8, 24, 32];
+    if (!validValues.includes(parsed as PngColorDepth)) {
+      throw new BadRequestException('PNG color depth must be 8, 24, or 32');
+    }
+    return parsed as PngColorDepth;
   }
 
   private parseSourceDimensions(

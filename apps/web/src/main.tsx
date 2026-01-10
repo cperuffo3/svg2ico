@@ -2,7 +2,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { ApiDocsPage, ConvertPage, DashboardPage, HomePage, NotFoundPage } from './features';
+import {
+  ApiDocsPage,
+  ConvertPage,
+  DashboardPage,
+  HomePage,
+  NotFoundPage,
+  PrivacyPage,
+  TermsPage,
+} from './features';
 import './index.css';
 import { ErrorBoundaryProvider } from './providers';
 
@@ -25,6 +33,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/convert" element={<ConvertPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/api-docs" element={<ApiDocsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>

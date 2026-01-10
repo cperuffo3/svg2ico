@@ -235,15 +235,17 @@ export function SvgPreview({
               labelFalse="Transparency"
               labelTrue="App Colors"
             />
-            {/* Icon preview toolbar - only show when app colors mode is active */}
-            {showAppColors && (
-              <IconPreviewToolbar
-                selectedContext={previewContext}
-                selectedTheme={previewTheme}
-                onContextChange={setPreviewContext}
-                onThemeChange={setPreviewTheme}
-              />
-            )}
+            {/* Icon preview toolbar - always reserve space (h-8) to prevent layout shift */}
+            <div className="h-8">
+              {showAppColors && (
+                <IconPreviewToolbar
+                  selectedContext={previewContext}
+                  selectedTheme={previewTheme}
+                  onContextChange={setPreviewContext}
+                  onThemeChange={setPreviewTheme}
+                />
+              )}
+            </div>
           </div>
         </div>
 

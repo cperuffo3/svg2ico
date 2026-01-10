@@ -14,9 +14,11 @@ import {
   ContextPreviewCard,
   ConversionProgress,
   OutputFormatSelector,
+  PngOptionsPanel,
   SvgPreview,
 } from '../components';
 import {
+  DEFAULT_PNG_OPTIONS,
   getSizeAvailabilityInfo,
   type BackgroundRemovalOption,
   type ConversionOptions as ConversionOptionsType,
@@ -24,6 +26,7 @@ import {
   type ConversionStep,
   type OutputFormat,
   type PngBackgroundRemovalProgress,
+  type PngOutputOptions,
   type RoundnessValue,
   type UploadedFile,
 } from '../types';
@@ -48,20 +51,30 @@ function useIsSmallHeight() {
   return isSmallHeight;
 }
 
-function getConversionSteps(format: OutputFormat, fileType: 'svg' | 'png'): ConversionStep[] {
+function getConversionSteps(
+  format: OutputFormat,
+  fileType: 'svg' | 'png',
+  pngSize?: number,
+): ConversionStep[] {
   const formatLabels: Record<OutputFormat, string> = {
     ico: 'ICO (16-256px)',
     icns: 'ICNS (16-1024px)',
     favicon: 'Favicon ICO',
+    png: `PNG (${pngSize ?? 512}px)`,
     all: 'ICO + ICNS bundle',
   };
 
   const fileTypeLabel = fileType === 'svg' ? 'SVG' : 'PNG';
+  const isPngOutput = format === 'png';
 
   return [
     { id: 'validate', label: `Validating ${fileTypeLabel} file`, status: 'pending' },
     { id: 'render', label: `Rendering ${formatLabels[format]}`, status: 'pending' },
-    { id: 'generate', label: 'Generating multi-resolution icon', status: 'pending' },
+    {
+      id: 'generate',
+      label: isPngOutput ? 'Applying settings' : 'Generating multi-resolution icon',
+      status: 'pending',
+    },
     { id: 'optimize', label: 'Optimizing file size', status: 'pending' },
     { id: 'prepare', label: 'Preparing download', status: 'pending' },
   ];
@@ -85,6 +98,7 @@ export function ConvertPage() {
     backgroundRemoval: { mode: 'none' },
     cornerRadius: 0,
     outputFormat: 'icns',
+    pngOptions: DEFAULT_PNG_OPTIONS,
   });
 
   // Debounce scale and cornerRadius for the expensive ContextPreviewCard renders
@@ -124,6 +138,10 @@ export function ConvertPage() {
     setOptions((prev) => ({ ...prev, cornerRadius }));
   }, []);
 
+  const handlePngOptionsChange = useCallback((pngOptions: PngOutputOptions) => {
+    setOptions((prev) => ({ ...prev, pngOptions }));
+  }, []);
+
   // Handle PNG background removal using AI
   const handlePngBackgroundRemoval = useCallback(async () => {
     if (!uploadedFile || uploadedFile.type !== 'png') return;
@@ -134,13 +152,10 @@ export function ConvertPage() {
     pngRemovalAbortRef.current = false;
 
     try {
-      const resultDataUrl = await removePngBackground(
-        uploadedFile.dataUrl,
-        (progress) => {
-          if (pngRemovalAbortRef.current) return;
-          setPngBackgroundRemovalProgress(progress);
-        },
-      );
+      const resultDataUrl = await removePngBackground(uploadedFile.dataUrl, (progress) => {
+        if (pngRemovalAbortRef.current) return;
+        setPngBackgroundRemovalProgress(progress);
+      });
 
       if (pngRemovalAbortRef.current) return;
 
@@ -161,7 +176,11 @@ export function ConvertPage() {
     setProgress(0);
 
     // Get format-specific steps
-    const formatSteps = getConversionSteps(options.outputFormat, uploadedFile.type);
+    const formatSteps = getConversionSteps(
+      options.outputFormat,
+      uploadedFile.type,
+      options.pngOptions.size,
+    );
     const stepsCopy = [...formatSteps];
     setSteps(stepsCopy);
 
@@ -193,11 +212,12 @@ export function ConvertPage() {
       formData.append('file', fileToSend);
 
       // Map frontend format to backend format
-      const formatMap: Record<OutputFormat, 'ico' | 'icns' | 'both' | 'favicon'> = {
+      const formatMap: Record<OutputFormat, 'ico' | 'icns' | 'both' | 'favicon' | 'png'> = {
         ico: 'ico',
         icns: 'icns',
         all: 'both',
         favicon: 'favicon',
+        png: 'png',
       };
       const apiFormat = formatMap[options.outputFormat];
 
@@ -207,6 +227,14 @@ export function ConvertPage() {
       formData.append('backgroundRemovalMode', options.backgroundRemoval.mode);
       if (options.backgroundRemoval.mode === 'color' && options.backgroundRemoval.color) {
         formData.append('backgroundRemovalColor', options.backgroundRemoval.color);
+      }
+
+      // Add PNG-specific options when exporting to PNG
+      if (options.outputFormat === 'png') {
+        formData.append('outputSize', options.pngOptions.size.toString());
+        formData.append('pngDpi', options.pngOptions.dpi.toString());
+        formData.append('pngColorspace', options.pngOptions.colorspace);
+        formData.append('pngColorDepth', options.pngOptions.colorDepth.toString());
       }
 
       // For PNG files, send source dimensions so backend can filter output sizes
@@ -249,6 +277,7 @@ export function ConvertPage() {
         ico: 'icon.ico',
         icns: 'icon.icns',
         favicon: 'favicon.ico',
+        png: 'icon.png',
         all: 'icons.zip',
       };
       let filename = extensionMap[options.outputFormat];
@@ -330,134 +359,181 @@ export function ConvertPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="mx-auto flex w-full max-w-365 flex-1 gap-6 px-6 py-12">
-        {/* Main card - wider on small height screens to reduce preview card height */}
+      <main className="mx-auto flex w-full max-w-365 flex-1 gap-4 px-6 py-6">
+        {/* Main card - wider when PNG options are shown */}
         <div
-          className={`h-fit shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-lg ${isSmallHeight ? 'w-160' : 'w-145'}`}
+          className={`h-fit shrink-0 rounded-2xl border border-border bg-card shadow-lg ${
+            options.outputFormat === 'png' && conversionState === 'idle'
+              ? 'w-205'
+              : isSmallHeight
+                ? 'w-160'
+                : 'w-145'
+          }`}
         >
           {/* Card Header */}
           <div className="flex h-16 items-center justify-center rounded-2xl bg-card-header px-8">
             <h2 className="text-xl font-semibold text-foreground">Convert Your Icon</h2>
           </div>
 
-          <div className="flex flex-col gap-6 p-8">
-            {/* SVG Preview */}
-            <SvgPreview
-              fileName={uploadedFile.name}
-              fileSize={formatFileSize(uploadedFile.size)}
-              svgDataUrl={processedPngDataUrl ?? uploadedFile.dataUrl}
-              scale={options.scale}
-              cornerRadius={options.cornerRadius}
-              backgroundRemoval={options.backgroundRemoval}
-              onScaleChange={handleScaleChange}
-              onCornerRadiusChange={handleCornerRadiusChange}
-              onBackgroundRemovalChange={handleBackgroundRemovalChange}
-              onRemove={handleRemove}
-              isPng={isPng}
-              pngBackgroundRemovalProgress={pngBackgroundRemovalProgress}
-              onPngBackgroundRemoval={handlePngBackgroundRemoval}
-            />
+          <div className="flex">
+            {/* Main content column */}
+            <div
+              className={`flex flex-1 flex-col gap-4 px-8 py-4 ${options.outputFormat === 'png' && conversionState === 'idle' ? 'pr-6' : ''}`}
+            >
+              {/* SVG Preview */}
+              <SvgPreview
+                fileName={uploadedFile.name}
+                fileSize={formatFileSize(uploadedFile.size)}
+                svgDataUrl={processedPngDataUrl ?? uploadedFile.dataUrl}
+                scale={options.scale}
+                cornerRadius={options.cornerRadius}
+                backgroundRemoval={options.backgroundRemoval}
+                onScaleChange={handleScaleChange}
+                onCornerRadiusChange={handleCornerRadiusChange}
+                onBackgroundRemovalChange={handleBackgroundRemovalChange}
+                onRemove={handleRemove}
+                isPng={isPng}
+                pngBackgroundRemovalProgress={pngBackgroundRemovalProgress}
+                onPngBackgroundRemoval={handlePngBackgroundRemoval}
+              />
 
-            {/* PNG size limitation info - shown for PNG files */}
-            {isPng && sourceSize !== null && conversionState === 'idle' && (
-              <div
-                className={`flex items-start gap-3 rounded-lg p-4 ${
-                  sizeInfo.isLimited
-                    ? 'border border-amber-500/30 bg-amber-500/10'
-                    : sourceSize < 1024
-                      ? 'border border-blue-500/30 bg-blue-500/10'
-                      : 'border border-green-500/30 bg-green-500/10'
-                }`}
-              >
-                <FontAwesomeIcon
-                  icon={sizeInfo.isLimited ? faTriangleExclamation : faCircleInfo}
-                  className={`mt-0.5 h-4 w-4 shrink-0 ${
-                    sizeInfo.isLimited
-                      ? 'text-amber-500'
-                      : sourceSize < 1024
-                        ? 'text-blue-500'
-                        : 'text-green-500'
-                  }`}
-                />
-                <div className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium text-foreground">
-                    Source: {uploadedFile.dimensions?.width}x{uploadedFile.dimensions?.height}px PNG
-                  </span>
-                  {sizeInfo.isLimited ? (
-                    <>
-                      <span className="text-muted-foreground">
-                        Output will include {sizeInfo.availableSizes.length} of{' '}
-                        {sizeInfo.allSizes.length} sizes ({sizeInfo.availableSizes.join(', ')}px).
-                        Larger sizes excluded to avoid upscaling.
-                      </span>
-                      {sourceSize < 1024 && (
-                        <span className="text-amber-600 dark:text-amber-400">
-                          For best results, use a 1024x1024px PNG or an SVG file.
+              {/* PNG size limitation info - shown for PNG files (hidden on small screens unless there's a limitation) */}
+              {isPng &&
+                sourceSize !== null &&
+                conversionState === 'idle' &&
+                (!isSmallHeight || sizeInfo.isLimited) && (
+                  <div
+                    className={`flex items-center gap-2 rounded-lg ${isSmallHeight ? 'px-3 py-2' : 'p-4'} ${
+                      sizeInfo.isLimited
+                        ? 'border border-amber-500/30 bg-amber-500/10'
+                        : sourceSize < 1024
+                          ? 'border border-blue-500/30 bg-blue-500/10'
+                          : 'border border-green-500/30 bg-green-500/10'
+                    }`}
+                  >
+                    <FontAwesomeIcon
+                      icon={sizeInfo.isLimited ? faTriangleExclamation : faCircleInfo}
+                      className={`h-4 w-4 shrink-0 ${
+                        sizeInfo.isLimited
+                          ? 'text-amber-500'
+                          : sourceSize < 1024
+                            ? 'text-blue-500'
+                            : 'text-green-500'
+                      }`}
+                    />
+                    {isSmallHeight ? (
+                      <div className="flex flex-1 items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          <span className="font-medium text-foreground">{sourceSize}px source</span>
+                          {sizeInfo.isLimited &&
+                            ` — ${sizeInfo.availableSizes.length}/${sizeInfo.allSizes.length} sizes available`}
                         </span>
-                      )}
-                    </>
-                  ) : sourceSize < 1024 ? (
-                    <span className="text-muted-foreground">
-                      For best results with ICNS, consider using a 1024x1024px source.
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">
-                      All output sizes available. Great source resolution!
-                    </span>
-                  )}
-                </div>
+                        {sourceSize < 1024 && (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            1024px recommended
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1 text-sm">
+                        <span className="font-medium text-foreground">
+                          Source: {uploadedFile.dimensions?.width}x{uploadedFile.dimensions?.height}
+                          px PNG
+                        </span>
+                        {sizeInfo.isLimited ? (
+                          <>
+                            <span className="text-muted-foreground">
+                              Output will include {sizeInfo.availableSizes.length} of{' '}
+                              {sizeInfo.allSizes.length} sizes ({sizeInfo.availableSizes.join(', ')}
+                              px). Larger sizes excluded to avoid upscaling.
+                            </span>
+                            {sourceSize < 1024 && (
+                              <span className="text-amber-600 dark:text-amber-400">
+                                For best results, use a 1024x1024px PNG or an SVG file.
+                              </span>
+                            )}
+                          </>
+                        ) : sourceSize < 1024 ? (
+                          <span className="text-muted-foreground">
+                            For best results with ICNS, consider using a 1024x1024px source.
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            All output sizes available. Great source resolution!
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              {/* Output format selector - shown only when idle */}
+              {conversionState === 'idle' && (
+                <OutputFormatSelector
+                  selectedFormat={options.outputFormat}
+                  onFormatChange={handleFormatChange}
+                  isSmallHeight={isSmallHeight}
+                />
+              )}
+
+              {/* Conversion progress - shown when converting or completed */}
+              {conversionState !== 'idle' && (
+                <ConversionProgress
+                  state={conversionState}
+                  steps={steps}
+                  progress={progress}
+                  estimatedTime={3}
+                />
+              )}
+
+              {/* Convert button */}
+              {conversionState === 'idle' && (
+                <Button size="lg" className="w-full" onClick={handleConvert}>
+                  <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
+                  <span>Convert</span>
+                </Button>
+              )}
+
+              {/* Converting state - no button, progress shows status */}
+              {isConverting && (
+                <Button size="lg" className="w-full" disabled>
+                  <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4 animate-spin" />
+                  <span>Converting...</span>
+                </Button>
+              )}
+
+              {/* Convert Again button - shown after completion or error */}
+              {(conversionState === 'completed' || conversionState === 'error') && (
+                <Button size="lg" className="w-full" onClick={handleConvertAgain}>
+                  <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
+                  <span>{conversionState === 'error' ? 'Try Again' : 'Convert Again'}</span>
+                </Button>
+              )}
+
+              {/* Security note */}
+              <div className="flex items-center justify-center gap-1">
+                <FontAwesomeIcon icon={faShieldHalved} className="h-3 w-3 text-muted-foreground" />
+                <span className="text-center text-xs text-muted-foreground">
+                  Processing happens on our secure server. No files are stored after conversion.
+                </span>
               </div>
-            )}
-
-            {/* Output format selector - shown only when idle */}
-            {conversionState === 'idle' && (
-              <OutputFormatSelector
-                selectedFormat={options.outputFormat}
-                onFormatChange={handleFormatChange}
-              />
-            )}
-
-            {/* Conversion progress - shown when converting or completed */}
-            {conversionState !== 'idle' && (
-              <ConversionProgress
-                state={conversionState}
-                steps={steps}
-                progress={progress}
-                estimatedTime={3}
-              />
-            )}
-
-            {/* Convert button */}
-            {conversionState === 'idle' && (
-              <Button size="lg" className="w-full" onClick={handleConvert}>
-                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
-                <span>Convert</span>
-              </Button>
-            )}
-
-            {/* Converting state - no button, progress shows status */}
-            {isConverting && (
-              <Button size="lg" className="w-full" disabled>
-                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4 animate-spin" />
-                <span>Converting...</span>
-              </Button>
-            )}
-
-            {/* Convert Again button - shown after completion or error */}
-            {(conversionState === 'completed' || conversionState === 'error') && (
-              <Button size="lg" className="w-full" onClick={handleConvertAgain}>
-                <FontAwesomeIcon icon={faArrowsRotate} className="h-4 w-4" />
-                <span>{conversionState === 'error' ? 'Try Again' : 'Convert Again'}</span>
-              </Button>
-            )}
-
-            {/* Security note */}
-            <div className="flex items-center justify-center gap-1">
-              <FontAwesomeIcon icon={faShieldHalved} className="h-3 w-3 text-muted-foreground" />
-              <span className="text-center text-xs text-muted-foreground">
-                Processing happens on our secure server. No files are stored after conversion.
-              </span>
             </div>
+
+            {/* PNG Options Panel - inside card with vertical separator */}
+            {conversionState === 'idle' && options.outputFormat === 'png' && (
+              <>
+                {/* Vertical separator */}
+                <div className="w-px self-stretch bg-border" />
+                {/* PNG Options */}
+                <div className="shrink-0 py-4 pr-8 pl-6">
+                  <PngOptionsPanel
+                    value={options.pngOptions}
+                    onChange={handlePngOptionsChange}
+                    maxSize={isPng && sourceSize ? sourceSize : undefined}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -468,6 +544,7 @@ export function ConvertPage() {
             scale={debouncedScale}
             cornerRadius={debouncedCornerRadius}
             backgroundRemoval={options.backgroundRemoval}
+            compact={options.outputFormat === 'png'}
           />
         </div>
       </main>

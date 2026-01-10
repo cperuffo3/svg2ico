@@ -4,6 +4,8 @@ export type OutputFormat = 'ico' | 'icns' | 'both' | 'png' | 'favicon';
 export type BackgroundRemovalMode = 'none' | 'color' | 'smart';
 export type RoundnessValue = 0 | 12.5 | 25 | 37.5 | 50;
 export type SourceFileType = 'svg' | 'png';
+export type PngColorspace = 'srgb' | 'p3' | 'cmyk';
+export type PngColorDepth = 8 | 24 | 32;
 
 export class ConvertOptionsDto {
   @ApiProperty({
@@ -49,11 +51,36 @@ export class ConvertOptionsDto {
   @ApiProperty({
     description: 'Output size in pixels (only used for PNG format)',
     minimum: 16,
-    maximum: 1024,
+    maximum: 2048,
     default: 512,
     example: 512,
   })
   outputSize: number = 512;
+
+  @ApiProperty({
+    description: 'PNG DPI/resolution (only used for PNG format)',
+    minimum: 1,
+    maximum: 600,
+    default: 72,
+    example: 72,
+  })
+  pngDpi: number = 72;
+
+  @ApiProperty({
+    description: 'PNG colorspace (only used for PNG format)',
+    enum: ['srgb', 'p3', 'cmyk'],
+    default: 'srgb',
+    example: 'srgb',
+  })
+  pngColorspace: PngColorspace = 'srgb';
+
+  @ApiProperty({
+    description: 'PNG color depth in bits (only used for PNG format)',
+    enum: [8, 24, 32],
+    default: 32,
+    example: 32,
+  })
+  pngColorDepth: PngColorDepth = 32;
 
   @ApiProperty({
     description: 'Source image width in pixels (only for PNG input)',

@@ -27,6 +27,7 @@ interface ContextPreviewCardProps {
   scale: number;
   cornerRadius: RoundnessValue;
   backgroundRemoval: BackgroundRemovalOption;
+  compact?: boolean;
 }
 
 // Preview configurations
@@ -136,6 +137,7 @@ export function ContextPreviewCard({
   scale,
   cornerRadius,
   backgroundRemoval,
+  compact = false,
 }: ContextPreviewCardProps) {
   const { theme } = useTheme();
   const [loadedSvgs, setLoadedSvgs] = useState<Record<string, string>>({});
@@ -337,8 +339,12 @@ export function ContextPreviewCard({
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
       {/* Card Header */}
-      <div className="flex h-16 items-center justify-between rounded-2xl bg-card-header px-6">
-        <h2 className="text-xl font-semibold text-foreground">Live Preview</h2>
+      <div
+        className={`flex items-center justify-between rounded-2xl bg-card-header px-6 ${compact ? 'h-12' : 'h-16'}`}
+      >
+        <h2 className={`font-semibold text-foreground ${compact ? 'text-base' : 'text-xl'}`}>
+          Live Preview
+        </h2>
         <ToggleSwitch
           value={isDarkMode}
           onChange={setIsDarkMode}
@@ -347,14 +353,14 @@ export function ContextPreviewCard({
         />
       </div>
 
-      <div className="flex flex-col gap-6 overflow-y-auto p-6">
+      <div className={`flex flex-col overflow-y-auto ${compact ? 'gap-4 p-4' : 'gap-4 px-6 py-4'}`}>
         {filteredConfigs.map((config) => {
           const svgSrc = compositeSvgs[config.name];
           const isLoaded = svgSrc ? loadedImages[svgSrc] : false;
           const aspectClass = previewAspectRatios[getBaseName(config.name)];
 
           return (
-            <div key={config.name} className="flex flex-col gap-2">
+            <div key={config.name} className={`flex flex-col ${compact ? 'gap-1' : 'gap-2'}`}>
               <div className="relative overflow-hidden rounded-lg border border-border">
                 {/* Skeleton with fade-out transition */}
                 <Skeleton
