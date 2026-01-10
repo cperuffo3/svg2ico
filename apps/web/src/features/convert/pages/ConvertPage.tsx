@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { env } from '@/config/env';
 import { Footer, Header } from '@/features/home/components';
 import { useDebouncedValue } from '@/hooks';
 import {
@@ -279,7 +280,7 @@ export function ConvertPage() {
         formData.append('sourceHeight', uploadedFile.dimensions.height.toString());
       }
 
-      const response = await fetch('/api/v1/convert', {
+      const response = await fetch(`${env.API_URL}/api/v1/convert`, {
         method: 'POST',
         body: formData,
       });

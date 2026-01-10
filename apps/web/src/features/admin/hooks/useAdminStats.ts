@@ -1,3 +1,4 @@
+import { env } from '@/config/env';
 import { useQuery } from '@tanstack/react-query';
 import type {
   ConfigurationsStats,
@@ -29,7 +30,8 @@ async function fetchWithAuth<T>(url: string, password: string): Promise<T> {
 export function useOverviewStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'overview', password],
-    queryFn: () => fetchWithAuth<OverviewStats>('/api/v1/admin/stats/overview', password!),
+    queryFn: () =>
+      fetchWithAuth<OverviewStats>(`${env.API_URL}/api/v1/admin/stats/overview`, password!),
     enabled: !!password,
     refetchInterval: 30000,
   });
@@ -38,7 +40,8 @@ export function useOverviewStats(password: string | null) {
 export function useConversionsStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'conversions', password],
-    queryFn: () => fetchWithAuth<ConversionsStats>('/api/v1/admin/stats/conversions', password!),
+    queryFn: () =>
+      fetchWithAuth<ConversionsStats>(`${env.API_URL}/api/v1/admin/stats/conversions`, password!),
     enabled: !!password,
     refetchInterval: 30000,
   });
@@ -47,7 +50,8 @@ export function useConversionsStats(password: string | null) {
 export function useFormatsStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'formats', password],
-    queryFn: () => fetchWithAuth<FormatsStats>('/api/v1/admin/stats/formats', password!),
+    queryFn: () =>
+      fetchWithAuth<FormatsStats>(`${env.API_URL}/api/v1/admin/stats/formats`, password!),
     enabled: !!password,
     refetchInterval: 60000,
   });
@@ -56,7 +60,8 @@ export function useFormatsStats(password: string | null) {
 export function usePerformanceStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'performance', password],
-    queryFn: () => fetchWithAuth<PerformanceStats>('/api/v1/admin/stats/performance', password!),
+    queryFn: () =>
+      fetchWithAuth<PerformanceStats>(`${env.API_URL}/api/v1/admin/stats/performance`, password!),
     enabled: !!password,
     refetchInterval: 60000,
   });
@@ -65,7 +70,8 @@ export function usePerformanceStats(password: string | null) {
 export function useFailuresStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'failures', password],
-    queryFn: () => fetchWithAuth<FailuresStats>('/api/v1/admin/stats/failures', password!),
+    queryFn: () =>
+      fetchWithAuth<FailuresStats>(`${env.API_URL}/api/v1/admin/stats/failures`, password!),
     enabled: !!password,
     refetchInterval: 30000,
   });
@@ -75,7 +81,10 @@ export function useConfigurationsStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'configurations', password],
     queryFn: () =>
-      fetchWithAuth<ConfigurationsStats>('/api/v1/admin/stats/configurations', password!),
+      fetchWithAuth<ConfigurationsStats>(
+        `${env.API_URL}/api/v1/admin/stats/configurations`,
+        password!,
+      ),
     enabled: !!password,
     refetchInterval: 60000,
   });
