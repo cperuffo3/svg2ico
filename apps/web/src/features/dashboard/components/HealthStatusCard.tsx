@@ -54,7 +54,7 @@ export function HealthStatusCard() {
             <div className="flex items-center justify-center gap-2">
               {data.status === 'ok' ? (
                 <>
-                  <FontAwesomeIcon icon={faCircleCheck} className="h-8 w-8 text-green-500" />
+                  <FontAwesomeIcon icon={faCircleCheck} className="h-8 w-8 text-success" />
                   <Badge variant="success" className="text-base px-4 py-1">
                     Healthy
                   </Badge>

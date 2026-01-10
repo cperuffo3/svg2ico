@@ -1,6 +1,12 @@
 /**
  * Main Stylesheet
- * Imports design system and base styles
+ * ===============
+ * Imports design system and base styles.
+ *
+ * Import Order:
+ * 1. Tailwind CSS
+ * 2. Primitives (raw color values)
+ * 3. Tokens (semantic references)
  */
 
 /* Tailwind */

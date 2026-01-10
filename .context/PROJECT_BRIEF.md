@@ -22,6 +22,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 ## Technical Considerations
 
 ### Backend Processing (Revised from original frontend-only approach)
+
 - **SVG to PNG**: [@resvg/resvg-js](https://github.com/yisibl/resvg-js) - Rust-powered, high-performance SVG renderer (3-4x faster than alternatives, no headless browser needed)
 - **Image processing**: [sharp](https://sharp.pixelplumbing.com/) for high-performance PNG manipulation (scaling, padding)
 - **ICO generation**: [sharp-ico](https://www.npmjs.com/package/sharp-ico) for multi-resolution Windows icons
@@ -29,18 +30,21 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 - **File handling**: Multipart form uploads, in-memory processing, no persistent storage
 
 ### Architecture
+
 - **Hybrid**: Frontend for UI/validation, backend for conversion processing
 - **State management**: React state + TanStack Query for API communication
 - **File upload**: FileReader API for preview, multipart/form-data to backend
 - **Download**: Backend returns binary files, frontend triggers download via Blob URLs
 
 ### Monetization
+
 - **Ad placement**: Non-intrusive display ads (Google AdSense or similar)
   - Recommended: Sidebar ad (desktop) or banner above/below tool (mobile)
   - Avoid: Interstitials, popups, or ads blocking the conversion flow
 - **Analytics**: Google Analytics or Plausible for usage tracking
 
 ### Hosting
+
 - **Static hosting**: Vercel, Netlify, or Cloudflare Pages (no backend needed)
 - **Domain**: svg2ico.com
 - **SSL**: Automatic via hosting provider
@@ -48,6 +52,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 ## MVP Scope
 
 ### Must-Have Features
+
 - [ ] Drag-and-drop SVG file upload
 - [ ] SVG preview on canvas
 - [ ] Scale/padding control (slider: 50%-100% of canvas size)
@@ -60,6 +65,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 - [ ] Rate limiting (60 conversions/hour per IP)
 
 ### Nice-to-Have (MVP)
+
 - [ ] "Convert Both" option (downloads .ico + .icns as .zip)
 - [ ] Basic background removal (toggle for transparent background)
 - [ ] File size display (original vs. converted)
@@ -68,6 +74,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 - [ ] Health check endpoint (monitor backend + database status)
 
 ### Explicitly Out of Scope (MVP)
+
 - PNG/JPEG input support (future enhancement)
 - Batch conversion
 - Advanced editing (color adjustments, filters)
@@ -77,11 +84,13 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 ## Future Enhancements
 
 ### Phase 2: Multi-Format Support
+
 - [ ] PNG input support
 - [ ] JPEG input support (with transparency handling)
 - [ ] Automatic background removal for raster images (AI-based)
 
 ### Phase 3: Advanced Features
+
 - [ ] Batch conversion (multiple files at once)
 - [ ] Preset padding templates (iOS app icons, Windows icons, etc.)
 - [ ] Color picker for custom background replacement
@@ -89,6 +98,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 - [ ] Copy-paste from clipboard support
 
 ### Phase 4: Monetization & Growth
+
 - [ ] Premium tier (remove ads, faster processing, batch conversion)
 - [ ] API access for developers
 - [ ] Browser extension version
@@ -97,6 +107,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 ## Technical Stack
 
 ### Frontend (apps/web)
+
 - React 19 + TypeScript
 - Vite for build tooling
 - Tailwind CSS v4 for styling
@@ -104,11 +115,17 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 - TanStack Query (if API calls needed)
 
 ### Backend (apps/api) - Required for MVP
+
 - **NestJS** REST API with conversion endpoint
 - **Dependencies**: @resvg/resvg-js, sharp, sharp-ico, png2icons
 - **Database**: PostgreSQL via Prisma for metrics tracking (NOT file storage)
 - **Stateless file processing**: No file storage, all conversion in-memory
 - **Rate limiting**: Database-backed throttling (@nestjs/throttler + Prisma)
+- **Worker Pool Architecture**: Node.js Worker Threads for concurrent processing
+  - Prevents main event loop blocking during CPU-intensive conversions
+  - Configurable pool size (defaults to number of CPU cores)
+  - Job queue with backpressure handling (returns HTTP 503 when overloaded)
+  - Automatic worker health monitoring and restart on failure
 - Used for:
   - SVG to PNG/ICO/ICNS conversion
   - Complex SVG feature handling (fonts, filters, external resources)
@@ -116,6 +133,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
   - Conversion metrics and analytics collection
 
 ### Libraries Selected (Research Complete)
+
 - [x] **SVG rendering**: [@resvg/resvg-js](https://github.com/yisibl/resvg-js) (Rust-powered, backend)
 - [x] **ICO encoding**: [sharp-ico](https://www.npmjs.com/package/sharp-ico) + [sharp](https://sharp.pixelplumbing.com/) (backend)
 - [x] **ICNS encoding**: [png2icons](https://www.npmjs.com/package/png2icons) (backend, creates both ICO and ICNS)
@@ -139,6 +157,7 @@ Developers and designers frequently need to convert SVG graphics to icon formats
 While the original brief suggested a frontend-only approach, research into SVG handling and icon encoding reveals significant advantages to a hybrid model:
 
 #### Frontend (apps/web) Responsibilities:
+
 - **File upload interface**: Drag-and-drop SVG file handling
 - **Preview rendering**: Display SVG in browser using native SVG rendering
 - **Basic UI controls**: Scale/padding sliders, format selection
@@ -146,6 +165,7 @@ While the original brief suggested a frontend-only approach, research into SVG h
 - **Client-side validation**: File size checks, SVG format validation
 
 #### Backend (apps/api) Responsibilities:
+
 - **SVG to PNG conversion**: Using resvg-js (Rust-powered) for high-performance rendering with excellent SVG spec compliance
 - **ICO encoding**: Multi-resolution ICO file generation
 - **ICNS encoding**: macOS icon format with full resolution support
@@ -170,6 +190,7 @@ While the original brief suggested a frontend-only approach, research into SVG h
 ### Recommended Technology Stack
 
 #### SVG to PNG Conversion:
+
 - **Primary approach**: [@resvg/resvg-js](https://github.com/yisibl/resvg-js) (Rust-powered, Node.js)
   - 3-4x faster than Sharp or canvas-based alternatives (~40 ops/sec in benchmarks)
   - Excellent SVG spec compliance (filters, gradients, masks, clipping, text)
@@ -182,6 +203,7 @@ While the original brief suggested a frontend-only approach, research into SVG h
   - Limitations: external resources blocked by CORS, font dependency on user's system
 
 #### PNG to ICO Encoding:
+
 - **Backend**: [sharp-ico](https://www.npmjs.com/package/sharp-ico) with [sharp](https://sharp.pixelplumbing.com/)
   - High-performance Node.js image processing
   - Built on libvips (fastest image library)
@@ -190,6 +212,7 @@ While the original brief suggested a frontend-only approach, research into SVG h
 - **Alternative**: [png-to-ico](https://www.npmjs.com/package/png-to-ico) (pure JavaScript, no native dependencies)
 
 #### PNG to ICNS Encoding:
+
 - **Backend**: [png2icons](https://www.npmjs.com/package/png2icons) (Node.js)
   - **Platform-independent** (no macOS requirement)
   - Zero native dependencies
@@ -202,6 +225,7 @@ While the original brief suggested a frontend-only approach, research into SVG h
 The backend will use a database for **metrics only**, maintaining zero file storage:
 
 **What IS stored (metrics/analytics)**:
+
 - Conversion counts and success/failure rates
 - File size distributions (anonymized)
 - Output format preferences (ICO, ICNS, both)
@@ -212,6 +236,7 @@ The backend will use a database for **metrics only**, maintaining zero file stor
 - Timestamp data for traffic analysis
 
 **What IS NOT stored (privacy-first)**:
+
 - ❌ Uploaded SVG files
 - ❌ Generated ICO/ICNS files
 - ❌ File contents or previews
@@ -219,6 +244,7 @@ The backend will use a database for **metrics only**, maintaining zero file stor
 - ❌ Conversion history per user
 
 **Processing remains stateless**:
+
 - Accept SVG upload via multipart/form-data
 - Process conversion in memory
 - Log metrics to database (non-blocking, async)
@@ -226,6 +252,7 @@ The backend will use a database for **metrics only**, maintaining zero file stor
 - Clean up temporary data after response
 
 **Future database use** (Phase 4):
+
 - Premium user accounts and subscriptions
 - API access tokens and quotas
 - Saved preset configurations (padding, scale settings)
@@ -273,6 +300,7 @@ model RateLimit {
 ```
 
 **Privacy notes**:
+
 - `ipHash`: SHA-256 hash of IP address (not reversible), used only for rate limiting
 - No `userId` field in MVP (anonymous conversions)
 - `errorMessage` truncated to 500 chars max, sanitized to remove potential file content
@@ -287,21 +315,42 @@ User uploads SVG → Frontend validates file
            (multipart form: file, options)
                   ↓
 Backend receives SVG → Check rate limit (DB query)
-                     → resvg-js renders to PNG(s)
-                     → sharp/png2icons encode to ICO/ICNS
-                     → Log metrics (async, non-blocking):
-                        • Conversion success/failure
-                        • File size, format, processing time
-                        • Browser/platform data
-                     → Return binary file(s)
-                     → Clean up temp data
+                     → Queue job to Worker Pool
+                  ↓
+        ┌─────────────────────────────────────────┐
+        │         WORKER POOL (N workers)         │
+        │  ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+        │  │Worker 1 │ │Worker 2 │ │Worker N │   │
+        │  │(thread) │ │(thread) │ │(thread) │   │
+        │  └─────────┘ └─────────┘ └─────────┘   │
+        │                                         │
+        │  Each worker (isolated thread):         │
+        │  → resvg-js renders SVG to PNG(s)      │
+        │  → sharp/png2icons encode to ICO/ICNS  │
+        │  → Return result via MessagePort       │
+        └─────────────────────────────────────────┘
+                  ↓
+Main thread receives result → Log metrics (async, non-blocking):
+                               • Conversion success/failure
+                               • File size, format, processing time
+                               • Browser/platform data
+                             → Return binary file(s)
+                             → Clean up temp data
                   ↓
 Frontend triggers download(s)
 ```
 
+**Why Worker Threads?**
+
+- **Non-blocking**: Heavy SVG rendering (resvg-js) and image encoding (sharp) are CPU-intensive. Running them in the main thread would block all other requests.
+- **Concurrent processing**: Multiple users can convert simultaneously without waiting for each other.
+- **Graceful degradation**: If queue is full, returns HTTP 503 with retry-after header instead of crashing.
+- **Resilience**: Workers are isolated; one failing conversion doesn't affect others.
+
 ### Icon Resolution Specifications
 
 #### ICO Format (Windows):
+
 - **16x16**: Taskbar, small icons
 - **32x32**: Standard desktop icons
 - **48x48**: Large desktop icons
@@ -309,7 +358,9 @@ Frontend triggers download(s)
 - **Optional**: 64x64, 128x128 for completeness
 
 #### ICNS Format (macOS):
+
 Complete icon set (png2icons generates all automatically):
+
 - **16x16** (@1x and @2x)
 - **32x32** (@1x and @2x)
 - **64x64** (@1x and @2x)
@@ -320,10 +371,19 @@ Complete icon set (png2icons generates all automatically):
 ### File Size & Processing Limits
 
 **Recommended limits**:
+
 - **Max SVG file size**: 10MB (sufficient for complex vector graphics)
 - **Max SVG dimensions**: 4096x4096px (reasonable upper bound for icon source)
 - **Processing timeout**: 30 seconds (covers complex SVG rendering)
 - **Rate limiting**: 60 conversions/hour per IP (prevent abuse, no auth needed)
+
+**Worker Pool Configuration**:
+
+- **Pool size**: `os.cpus().length` workers (configurable via `WORKER_POOL_SIZE` env var)
+- **Max queue size**: 100 pending jobs (configurable via `MAX_QUEUE_SIZE` env var)
+- **Worker timeout**: 30 seconds per job (matches processing timeout)
+- **Worker recycling**: Workers restart after 100 jobs or on memory threshold (prevents leaks)
+- **Backpressure response**: HTTP 503 with `Retry-After` header when queue is full
 
 ## Open Questions
 

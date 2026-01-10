@@ -16,3 +16,34 @@ model User {
 
   @@map("users")
 }
+
+model ConversionMetric {
+  id                String   @id @default(cuid())
+  ipHash            String   @map("ip_hash")
+  inputFormat       String   @map("input_format")
+  outputFormat      String   @map("output_format")
+  inputSizeBytes    Int      @map("input_size_bytes")
+  outputSizeBytes   Int?     @map("output_size_bytes")
+  processingTimeMs  Int?     @map("processing_time_ms")
+  success           Boolean  @default(true)
+  errorMessage      String?  @map("error_message")
+  conversionOptions Json?    @map("conversion_options")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([ipHash])
+  @@index([createdAt])
+  @@map("conversion_metrics")
+}
+
+model RateLimit {
+  id         String   @id @default(cuid())
+  ipHash     String   @unique @map("ip_hash")
+  count      Int      @default(0)
+  windowStart DateTime @map("window_start")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}

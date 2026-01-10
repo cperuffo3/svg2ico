@@ -13,6 +13,7 @@
     "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
     "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
+    "db:seed": "pnpm --filter @svg2ico/api db:seed",
     "db:migrate": "pnpm --filter @svg2ico/api db:migrate",
     "db:studio": "pnpm --filter @svg2ico/api db:studio",
     "db:generate": "pnpm --filter @svg2ico/api db:generate",
