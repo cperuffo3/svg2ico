@@ -1,101 +1,42 @@
 # SVG2ICO
 
-A web-based SVG to icon converter that transforms SVG files into platform-specific icon formats (ICO for Windows, ICNS for macOS).
+A free online tool for converting SVG files into platform-specific icon formats. Available at [svg2ico.com](https://svg2ico.com).
 
 ![Screenshot](.documentation/images/screenshot.png)
 
+## What It Does
+
+SVG2ICO converts your SVG vector graphics into ready-to-use icon files:
+
+- **ICO** - Windows icon format with multi-resolution support (16x16, 32x32, 48x48, 256x256)
+- **ICNS** - macOS icon format with complete resolution set (16x16 through 512x512 @1x and @2x)
+- **PNG** - High-quality export with custom sizes from 16x16 to 1024x1024
+
 ## Features
 
-- **Multi-Format Export**: Convert SVG to ICO (Windows), ICNS (macOS), or PNG
-- **Smart Background Removal**: Automatically detect and remove background shapes, or specify a color
-- **Customizable Output**: Adjust scale (50-200%) and corner radius (0-50%)
-- **Real-Time Preview**: See your icon in macOS/Windows contexts with dark/light themes
-- **Privacy-First**: Files processed in-memory only, zero storage
-- **Batch Export**: Download ICO + ICNS together as a ZIP
+- **Real-Time Preview** - See your icon in macOS/Windows contexts with dark/light themes
+- **Background Removal** - Automatically detect and remove backgrounds, or specify a color
+- **Customizable Output** - Adjust scale (50-200%) and corner radius (0-50%)
+- **Batch Export** - Download ICO + ICNS together as a ZIP
+- **Fast** - Rust-powered conversion completes in under 5 seconds
+
+## Privacy
+
+Your files are processed in-memory only. We never store or access your uploaded content. Files are processed and immediately deleted.
+
+## Limitations
+
+- Maximum file size: 10MB
+- SVG input only (PNG/JPEG support planned)
+- One file at a time (batch conversion planned)
 
 ## Tech Stack
 
-- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS v4, shadcn/ui
-- **Backend**: NestJS 11, Prisma, PostgreSQL
+- **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: NestJS, Prisma, PostgreSQL
 - **Image Processing**: Resvg (Rust-powered SVG rendering), Sharp
-- **Monorepo**: Turborepo + pnpm workspaces
-
-## Prerequisites
-
-- Node.js 20+
-- pnpm 10+
-- Docker and Docker Compose
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-### 2. Set up environment variables
-
-```bash
-cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-```
-
-### 3. Start everything
-
-```bash
-pnpm dev:full
-```
-
-This starts Docker (PostgreSQL), runs migrations, and launches both apps.
-
-## Available Scripts
-
-| Script             | Description                                |
-| ------------------ | ------------------------------------------ |
-| `pnpm dev`         | Start all apps in development mode         |
-| `pnpm dev:full`    | Start Docker + run migrations + start apps |
-| `pnpm build`       | Build all apps                             |
-| `pnpm docker:up`   | Start Docker containers                    |
-| `pnpm docker:down` | Stop Docker containers                     |
-| `pnpm db:migrate`  | Run Prisma migrations                      |
-| `pnpm db:studio`   | Open Prisma Studio                         |
-
-## URLs
-
-| Service       | URL                          |
-| ------------- | ---------------------------- |
-| Frontend      | http://localhost:5173        |
-| API           | http://localhost:3000/api/v1 |
-| Prisma Studio | http://localhost:5555        |
-
-## Project Structure
-
-```
-apps/
-├── api/           # NestJS backend
-│   ├── src/modules/
-│   │   ├── conversion/   # SVG conversion logic
-│   │   ├── workers/      # Worker thread pool
-│   │   ├── rate-limit/   # IP-based rate limiting
-│   │   └── metrics/      # Conversion analytics
-│   └── prisma/
-└── web/           # React frontend
-    └── src/
-        ├── features/     # Page components (home, convert)
-        ├── components/   # shadcn/ui + custom components
-        └── api/          # API client
-```
-
-## How It Works
-
-1. Upload an SVG file via drag-and-drop
-2. Adjust settings (scale, corner radius, background removal)
-3. Preview your icon in real-time
-4. Download as ICO, ICNS, PNG, or all formats as ZIP
-
-The backend uses worker threads for parallel processing, with Resvg for fast SVG rendering and Sharp for image manipulation.
+- **Infrastructure**: Turborepo monorepo
 
 ## License
 
-MIT
+BSL 1.1

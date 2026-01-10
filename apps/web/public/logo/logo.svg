@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <!-- Primary gradient: Blue 500 to Indigo 500 -->
+    <linearGradient id="primary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <!-- Primary shape: square (40x40) centered at 32,32 -> x=12,y=12 -->
+  <g>
+    <rect x="12" y="12" width="40" height="40" rx="4" fill="url(#primary)"/>
+    <!-- Transformation: one diagonal cut (triangle) removed visually via white shape to suggest conversion/transfer -->
+    <path d="M44 20 L52 20 L52 28 Z" fill="#FFFFFF"/>
+    <!-- Accent: right-pointing arrow (represents conversion/export) centered on grid -->
+    <path d="M28 30 L36 30 L36 26 L44 32 L36 38 L36 34 L28 34 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

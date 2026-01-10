@@ -1,5 +1,4 @@
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
-import { faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const footerLinks = {
@@ -18,9 +17,7 @@ export function Footer() {
           {/* Brand column */}
           <div className="flex flex-1 flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-gradient-primary-from to-gradient-primary-to">
-                <FontAwesomeIcon icon={faArrowRightArrowLeft} className="h-4 w-4 text-white" />
-              </div>
+              <img src="/logo/logo.svg" alt="svg2ico logo" className="h-10 w-10" />
               <span className="text-xl font-bold text-foreground">svg2ico</span>
             </div>
             <p className="max-w-[288px] text-sm leading-5 text-muted-foreground">

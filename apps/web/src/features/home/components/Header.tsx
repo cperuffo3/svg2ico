@@ -1,6 +1,5 @@
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
-import { faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export function Header() {
@@ -8,9 +7,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card">
       <div className="mx-auto grid max-w-7xl grid-cols-3 items-center px-6 py-4">
         <a href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-gradient-primary-from to-gradient-primary-to">
-            <FontAwesomeIcon icon={faArrowRightArrowLeft} className="h-4 w-4 text-white" />
-          </div>
+          <img src="/logo/logo.svg" alt="svg2ico logo" className="h-10 w-10" />
           <span className="text-2xl font-bold text-foreground">svg2ico</span>
         </a>
         <a
