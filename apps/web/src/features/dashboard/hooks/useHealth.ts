@@ -1,3 +1,4 @@
+import { env } from '@/config/env';
 import { useQuery } from '@tanstack/react-query';
 
 export interface HealthStatus {
@@ -8,7 +9,7 @@ export interface HealthStatus {
 }
 
 async function fetchHealth(): Promise<HealthStatus> {
-  const response = await fetch('/api/v1/health');
+  const response = await fetch(`${env.API_URL}/api/v1/health`);
   if (!response.ok) {
     throw new Error(`Health check failed: ${response.status}`);
   }
