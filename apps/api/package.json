@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "type-check": "tsc --noEmit"
@@ -51,6 +52,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.4.2",
     "prisma": "^7.2.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.48.1"
   }

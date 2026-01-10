@@ -20,11 +20,7 @@ export function Header() {
           className="flex h-10 w-fit items-center gap-2 justify-self-center rounded-lg bg-[#5F7FFF] px-4 font-medium text-white transition-opacity hover:opacity-90"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          <img
-            src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg"
-            alt=""
-            className="h-5 w-5"
-          />
+          <img src="/icons/coffee.svg" alt="" className="h-5 w-5" />
           <span>Buy me a coffee</span>
         </a>
         <div className="flex items-center gap-2 justify-self-end">

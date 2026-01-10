@@ -68,7 +68,8 @@ export function OutputFormatsSection() {
           <span className="text-xl font-bold text-foreground">Intelligent Background Removal</span>
         </div>
         <p className="text-sm leading-5 text-muted-foreground">
-          Automatically detect and remove backgrounds from PNG images with smart edge detection and transparency preservation.
+          Automatically detect and remove backgrounds from PNG images with smart edge detection and
+          transparency preservation.
         </p>
         <div className="grid grid-cols-3 gap-4">
           <div className="flex items-center gap-2">

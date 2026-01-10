@@ -216,6 +216,18 @@ export class ConversionController {
           processingTimeMs,
           success,
           errorMessage,
+          conversionOptions: {
+            scale: conversionOptions.scale,
+            cornerRadius: conversionOptions.cornerRadius,
+            backgroundRemovalMode: conversionOptions.backgroundRemovalMode,
+            backgroundRemovalColor: conversionOptions.backgroundRemovalColor,
+            outputSize: conversionOptions.outputSize,
+            pngDpi: conversionOptions.pngDpi,
+            pngColorspace: conversionOptions.pngColorspace,
+            pngColorDepth: conversionOptions.pngColorDepth,
+            sourceWidth: conversionOptions.sourceDimensions?.width,
+            sourceHeight: conversionOptions.sourceDimensions?.height,
+          },
         })
         .catch(() => {
           // Ignore metrics errors

@@ -30,7 +30,12 @@ interface PngOptionsPanelProps {
   sourceMetadata?: PngSourceMetadata; // Constraints from source PNG
 }
 
-export function PngOptionsPanel({ value, onChange, maxSize, sourceMetadata }: PngOptionsPanelProps) {
+export function PngOptionsPanel({
+  value,
+  onChange,
+  maxSize,
+  sourceMetadata,
+}: PngOptionsPanelProps) {
   // Calculate max DPI based on source PNG metadata
   // If source has DPI metadata, we can't output higher DPI than source
   const maxDpi = sourceMetadata?.dpi ?? 600;

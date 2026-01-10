@@ -1,6 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { InputJsonValue } from '@prisma/client/runtime/client';
 import { createHash } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
+
+export interface ConversionOptions {
+  scale?: number;
+  cornerRadius?: number;
+  backgroundRemovalMode?: string;
+  backgroundRemovalColor?: string;
+  outputSize?: number;
+  pngDpi?: number;
+  pngColorspace?: string;
+  pngColorDepth?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  [key: string]: string | number | undefined;
+}
 
 export interface ConversionMetricData {
   ipAddress: string;
@@ -11,6 +26,7 @@ export interface ConversionMetricData {
   processingTimeMs?: number;
   success: boolean;
   errorMessage?: string;
+  conversionOptions?: ConversionOptions;
 }
 
 export interface MetricsSummary {
@@ -46,6 +62,7 @@ export class MetricsService {
           processingTimeMs: data.processingTimeMs,
           success: data.success,
           errorMessage: data.errorMessage,
+          conversionOptions: data.conversionOptions as InputJsonValue | undefined,
         },
       });
     } catch (error) {

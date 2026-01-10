@@ -51,15 +51,15 @@ This starts Docker (PostgreSQL), runs migrations, and launches both apps.
 
 ## Available Scripts
 
-| Script           | Description                                |
-| ---------------- | ------------------------------------------ |
-| `pnpm dev`       | Start all apps in development mode         |
-| `pnpm dev:full`  | Start Docker + run migrations + start apps |
-| `pnpm build`     | Build all apps                             |
-| `pnpm docker:up` | Start Docker containers                    |
-| `pnpm docker:down` | Stop Docker containers                   |
-| `pnpm db:migrate` | Run Prisma migrations                     |
-| `pnpm db:studio` | Open Prisma Studio                         |
+| Script             | Description                                |
+| ------------------ | ------------------------------------------ |
+| `pnpm dev`         | Start all apps in development mode         |
+| `pnpm dev:full`    | Start Docker + run migrations + start apps |
+| `pnpm build`       | Build all apps                             |
+| `pnpm docker:up`   | Start Docker containers                    |
+| `pnpm docker:down` | Stop Docker containers                     |
+| `pnpm db:migrate`  | Run Prisma migrations                      |
+| `pnpm db:studio`   | Open Prisma Studio                         |
 
 ## URLs
 

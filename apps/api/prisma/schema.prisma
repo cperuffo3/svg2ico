@@ -18,16 +18,17 @@ model User {
 }
 
 model ConversionMetric {
-  id             String   @id @default(cuid())
-  ipHash         String   @map("ip_hash")
-  inputFormat    String   @map("input_format")
-  outputFormat   String   @map("output_format")
-  inputSizeBytes Int      @map("input_size_bytes")
-  outputSizeBytes Int?    @map("output_size_bytes")
-  processingTimeMs Int?   @map("processing_time_ms")
-  success        Boolean  @default(true)
-  errorMessage   String?  @map("error_message")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                String   @id @default(cuid())
+  ipHash            String   @map("ip_hash")
+  inputFormat       String   @map("input_format")
+  outputFormat      String   @map("output_format")
+  inputSizeBytes    Int      @map("input_size_bytes")
+  outputSizeBytes   Int?     @map("output_size_bytes")
+  processingTimeMs  Int?     @map("processing_time_ms")
+  success           Boolean  @default(true)
+  errorMessage      String?  @map("error_message")
+  conversionOptions Json?    @map("conversion_options")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   @@index([ipHash])
   @@index([createdAt])

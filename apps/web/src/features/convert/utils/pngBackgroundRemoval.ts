@@ -20,9 +20,7 @@ let isPreloaded = false;
  * Preload the background removal model assets.
  * This can be called early to warm up the model before the user needs it.
  */
-export async function preloadBackgroundRemovalModel(
-  onProgress?: ProgressCallback,
-): Promise<void> {
+export async function preloadBackgroundRemovalModel(onProgress?: ProgressCallback): Promise<void> {
   if (isPreloaded) return;
 
   const preloadConfig: Config = {
@@ -91,8 +89,7 @@ export async function removePngBackground(
 
     return resultDataUrl;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('Background removal failed:', error);
     onProgress?.({ state: 'error', error: errorMessage });
     throw new Error(`Background removal failed: ${errorMessage}`);

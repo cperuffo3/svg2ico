@@ -112,7 +112,8 @@ export function getSizeAvailabilityInfo(
 ): { availableSizes: number[]; allSizes: readonly number[]; isLimited: boolean } {
   if (!sourceDimensions) {
     // SVG can generate all sizes
-    const allSizes = format === 'favicon' ? FAVICON_SIZES : format === 'ico' ? ICO_SIZES : ICNS_SIZES;
+    const allSizes =
+      format === 'favicon' ? FAVICON_SIZES : format === 'ico' ? ICO_SIZES : ICNS_SIZES;
     return { availableSizes: [...allSizes], allSizes, isLimited: false };
   }
 

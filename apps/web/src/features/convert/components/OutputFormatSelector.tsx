@@ -75,7 +75,12 @@ export function OutputFormatSelector({
       </div>
 
       {outputMode === 'icon' ? (
-        <div className={cn('grid gap-2', isSmallHeight ? 'grid-cols-4' : 'grid-cols-2 gap-3 sm:grid-cols-4')}>
+        <div
+          className={cn(
+            'grid gap-2',
+            isSmallHeight ? 'grid-cols-4' : 'grid-cols-2 gap-3 sm:grid-cols-4',
+          )}
+        >
           {iconFormatOptions.map((option) => {
             const isSelected = selectedFormat === option.value;
             return (
@@ -103,7 +108,10 @@ export function OutputFormatSelector({
                 >
                   {isSelected && (
                     <svg
-                      className={cn('text-primary-foreground', isSmallHeight ? 'h-2 w-2' : 'h-3 w-3')}
+                      className={cn(
+                        'text-primary-foreground',
+                        isSmallHeight ? 'h-2 w-2' : 'h-3 w-3',
+                      )}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -123,7 +131,13 @@ export function OutputFormatSelector({
                   )}
                 >
                   {option.useInlineSvg ? (
-                    <svg viewBox="0 0 512 512" className={cn('text-primary drop-shadow-sm', isSmallHeight ? 'h-6 w-6' : 'h-12 w-12')}>
+                    <svg
+                      viewBox="0 0 512 512"
+                      className={cn(
+                        'text-primary drop-shadow-sm',
+                        isSmallHeight ? 'h-6 w-6' : 'h-12 w-12',
+                      )}
+                    >
                       <path
                         fill="currentColor"
                         clipRule="evenodd"
@@ -135,13 +149,21 @@ export function OutputFormatSelector({
                     <img
                       src={option.icon}
                       alt={option.label}
-                      className={cn('object-contain drop-shadow-sm', isSmallHeight ? 'h-6 w-6' : 'h-12 w-12')}
+                      className={cn(
+                        'object-contain drop-shadow-sm',
+                        isSmallHeight ? 'h-6 w-6' : 'h-12 w-12',
+                      )}
                     />
                   )}
                 </div>
 
                 {/* Label & Description */}
-                <div className={cn('flex flex-col', isSmallHeight ? 'items-start gap-0' : 'items-center gap-0.5')}>
+                <div
+                  className={cn(
+                    'flex flex-col',
+                    isSmallHeight ? 'items-start gap-0' : 'items-center gap-0.5',
+                  )}
+                >
                   <span
                     className={cn(
                       'font-semibold transition-colors',
@@ -151,7 +173,14 @@ export function OutputFormatSelector({
                   >
                     {option.label}
                   </span>
-                  <span className={cn('text-muted-foreground', isSmallHeight ? 'text-[10px] leading-tight' : 'text-xs')}>{option.description}</span>
+                  <span
+                    className={cn(
+                      'text-muted-foreground',
+                      isSmallHeight ? 'text-[10px] leading-tight' : 'text-xs',
+                    )}
+                  >
+                    {option.description}
+                  </span>
                 </div>
               </button>
             );
@@ -166,18 +195,45 @@ export function OutputFormatSelector({
           )}
         >
           {/* Icon */}
-          <div className={cn('flex shrink-0 items-center justify-center', isSmallHeight ? 'h-7 w-7' : 'h-14 w-14')}>
+          <div
+            className={cn(
+              'flex shrink-0 items-center justify-center',
+              isSmallHeight ? 'h-7 w-7' : 'h-14 w-14',
+            )}
+          >
             <img
               src="/icons/png.svg"
               alt="PNG"
-              className={cn('object-contain drop-shadow-sm', isSmallHeight ? 'h-6 w-6' : 'h-12 w-12')}
+              className={cn(
+                'object-contain drop-shadow-sm',
+                isSmallHeight ? 'h-6 w-6' : 'h-12 w-12',
+              )}
             />
           </div>
 
           {/* Label & Description */}
-          <div className={cn('flex flex-col', isSmallHeight ? 'items-start gap-0' : 'items-center gap-0.5')}>
-            <span className={cn('font-semibold text-primary', isSmallHeight ? 'text-xs leading-tight' : 'text-sm')}>.png</span>
-            <span className={cn('text-muted-foreground', isSmallHeight ? 'text-[10px] leading-tight' : 'text-xs')}>Custom size</span>
+          <div
+            className={cn(
+              'flex flex-col',
+              isSmallHeight ? 'items-start gap-0' : 'items-center gap-0.5',
+            )}
+          >
+            <span
+              className={cn(
+                'font-semibold text-primary',
+                isSmallHeight ? 'text-xs leading-tight' : 'text-sm',
+              )}
+            >
+              .png
+            </span>
+            <span
+              className={cn(
+                'text-muted-foreground',
+                isSmallHeight ? 'text-[10px] leading-tight' : 'text-xs',
+              )}
+            >
+              Custom size
+            </span>
           </div>
         </div>
       )}

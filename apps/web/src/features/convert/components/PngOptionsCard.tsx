@@ -108,7 +108,9 @@ export function PngOptionsCard({ value, onChange, maxSize }: PngOptionsCardProps
             stepper={1}
             placeholder="72"
           />
-          <span className="text-xs text-muted-foreground">Common: 72 (web), 96 (Windows), 300 (print)</span>
+          <span className="text-xs text-muted-foreground">
+            Common: 72 (web), 96 (Windows), 300 (print)
+          </span>
         </div>
 
         {/* Colorspace */}
@@ -174,8 +176,11 @@ export function PngOptionsCard({ value, onChange, maxSize }: PngOptionsCardProps
           <path d="M12 16v-4M12 8h.01" />
         </svg>
         <span>
-          Output: <strong className="text-foreground">{value.size}x{value.size}px</strong> at{' '}
-          <strong className="text-foreground">{value.dpi} DPI</strong>,{' '}
+          Output:{' '}
+          <strong className="text-foreground">
+            {value.size}x{value.size}px
+          </strong>{' '}
+          at <strong className="text-foreground">{value.dpi} DPI</strong>,{' '}
           <strong className="text-foreground">
             {COLOR_DEPTH_OPTIONS.find((c) => c.value === value.colorDepth)?.label}
           </strong>{' '}

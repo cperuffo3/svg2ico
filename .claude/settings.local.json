@@ -84,9 +84,6 @@
       "Bash(git clean:*)",
       "Bash(git rm:*)"
     ],
-    "ask": [
-      "Bash(rm:*)",
-      "Bash(pnpm approve-builds:*)"
-    ]
+    "ask": ["Bash(rm:*)", "Bash(pnpm approve-builds:*)"]
   }
 }
