@@ -23,7 +23,7 @@ const steps = [
 
 export function HowItWorksSection() {
   return (
-    <section className="flex w-full max-w-4xl flex-col items-center gap-12 pt-8">
+    <section id="how-it-works" className="flex w-full max-w-4xl flex-col items-center gap-12 pt-8">
       <h2 className="text-center text-3xl font-bold text-foreground">How It Works</h2>
       <div className="flex w-full justify-center gap-8">
         {steps.map((step) => (
