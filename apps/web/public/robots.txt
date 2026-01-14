@@ -1,10 +1,5 @@
-# robots.txt for svg2ico.com
 User-agent: *
-Allow: /
-
-# Sitemap location
+Disallow: 
+Disallow: /admin/
+Disallow: /dashboard/
 Sitemap: https://svg2ico.com/sitemap.xml
-
-# Block admin and dashboard pages from indexing
-Disallow: /admin
-Disallow: /dashboard
