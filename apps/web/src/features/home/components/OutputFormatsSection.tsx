@@ -36,8 +36,8 @@ const formats = [
 
 export function OutputFormatsSection() {
   return (
-    <section className="flex w-full max-w-6xl flex-col items-center gap-8 rounded-2xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to px-8 pb-8 pt-16">
-      <h2 className="text-center text-2xl font-bold text-foreground">Supported Output Formats</h2>
+    <section className="flex w-full max-w-6xl flex-col items-center gap-8 rounded-2xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to px-8 pb-8 pt-8">
+      <h2 className="text-center text-3xl font-bold text-foreground">Supported Output Formats</h2>
       <div className="flex w-full justify-center gap-8">
         {formats.map((format) => (
           <div

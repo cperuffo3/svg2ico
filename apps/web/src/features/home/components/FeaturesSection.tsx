@@ -24,8 +24,8 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="flex w-full max-w-5xl flex-col items-center gap-6 pt-4">
-      <h2 className="text-2xl font-bold text-foreground">Why Choose svg2ico?</h2>
+    <section id="features" className="-mt-4 flex w-full max-w-5xl flex-col items-center">
+      <h2 className="sr-only">Why Choose svg2ico?</h2>
       <div className="flex w-full justify-center gap-8">
         {features.map((feature) => (
           <FeatureCard key={feature.title} {...feature} />

@@ -66,6 +66,16 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-4">
             <a
+              href="https://railway.com?referralCode=ZoPg44"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 w-fit items-center gap-2 rounded-lg border border-[#a667e4] bg-[#a667e4] px-4 font-medium text-white transition-opacity hover:opacity-90 dark:bg-[#1f132a]"
+              style={{ fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 6px -1px #1f132a' }}
+            >
+              <img src="/icons/railway.svg" alt="Railway icon" className="h-5 w-5" />
+              <span>Hosted On Railway</span>
+            </a>
+            <a
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"

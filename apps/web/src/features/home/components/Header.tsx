@@ -5,28 +5,19 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-center gap-3">
           <img src="/logo/logo.svg" alt="svg2ico logo" className="h-10 w-10" />
           <span className="text-2xl font-bold text-foreground">svg2ico</span>
         </a>
-        <nav className="flex items-center gap-6">
-          <a
-            href="#features"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+        <nav className="absolute left-1/2 -translate-x-1/2">
+          <a href="#features" className="sr-only">
             Features
           </a>
-          <a
-            href="#how-it-works"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <a href="#how-it-works" className="sr-only">
             How It Works
           </a>
-          <a
-            href="#faq"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <a href="#faq" className="sr-only">
             FAQ
           </a>
           <a
