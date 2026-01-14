@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Prevent FOUC: set background color before CSS loads -->
+    <style>
+      html { background-color: #fff; }
+      .dark html, html.dark { background-color: #09090b; }
+      .seo-fallback { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    </style>
+
     <!-- Primary Meta Tags -->
     <title>svg2ico - Free SVG to ICO & ICNS Converter | Create Favicons & App Icons</title>
     <meta name="description" content="Convert SVG and PNG files to ICO and ICNS formats instantly. Free online tool with 100% privacy - files processed in-memory only, never stored. Perfect for favicons, Windows icons, and macOS app icons." />
@@ -69,9 +76,11 @@
   </head>
   <body>
     <div id="root">
-      <!-- SEO fallback content for crawlers (replaced by React on hydration) -->
-      <h1>Convert SVG or PNG to ICO & ICNS</h1>
-      <p>Fast, privacy-focused icon converter. Your files are processed in-memory only. Zero Storage, Complete Privacy.</p>
+      <!-- SEO fallback content for crawlers (visually hidden, replaced by React) -->
+      <div class="seo-fallback">
+        <h1>Convert SVG or PNG to ICO & ICNS</h1>
+        <p>Fast, privacy-focused icon converter. Your files are processed in-memory only. Zero Storage, Complete Privacy.</p>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
