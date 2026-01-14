@@ -1,5 +1,11 @@
 # @starter/web
 
+## 0.4.1
+
+### Patch Changes
+
+- 83da2cc: fix screen flash issue
+
 ## 0.4.0
 
 ### Minor Changes
