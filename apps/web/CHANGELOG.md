@@ -1,5 +1,11 @@
 # @starter/web
 
+## 0.4.2
+
+### Patch Changes
+
+- 18ea671: fix styling issues and add railway referral button
+
 ## 0.4.1
 
 ### Patch Changes
