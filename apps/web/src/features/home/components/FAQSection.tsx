@@ -28,7 +28,7 @@ const faqs = [
 
 export function FAQSection() {
   return (
-    <section className="flex w-full max-w-3xl flex-col items-center gap-12 py-8">
+    <section id="faq" className="flex w-full max-w-3xl flex-col items-center gap-12 py-8">
       <h2 className="text-center text-3xl font-bold text-foreground">Frequently Asked Questions</h2>
       <div className="flex w-full flex-col gap-4">
         {faqs.map((faq) => (
