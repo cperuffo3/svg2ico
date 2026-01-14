@@ -2,7 +2,7 @@
 
 A free online tool for converting SVG files into platform-specific icon formats. Available at [svg2ico.com](https://svg2ico.com).
 
-![Screenshot](.documentation/images/screenshot.png)
+![Screenshot](apps/web/public/logo/og-image.png)
 
 ## What It Does
 
