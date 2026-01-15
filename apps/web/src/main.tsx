@@ -11,6 +11,7 @@ import {
   NotFoundPage,
   PrivacyPage,
   TermsPage,
+  UploadErrorPage,
 } from './features';
 import './index.css';
 import { ErrorBoundaryProvider } from './providers';
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/api-docs" element={<ApiDocsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/upload-error" element={<UploadErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>

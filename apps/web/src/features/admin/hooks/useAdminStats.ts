@@ -1,5 +1,5 @@
 import { env } from '@/config/env';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ConfigurationsStats,
   ConversionsStats,
@@ -87,5 +87,38 @@ export function useConfigurationsStats(password: string | null) {
       ),
     enabled: !!password,
     refetchInterval: 60000,
+  });
+}
+
+export function useResetFailuresStats(password: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!password) throw new Error('No password provided');
+
+      const response = await fetch(`${env.API_URL}/api/v1/admin/stats/failures`, {
+        method: 'DELETE',
+        headers: {
+          'x-admin-password': password,
+        },
+      });
+
+      if (response.status === 401) {
+        throw new Error('UNAUTHORIZED');
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json() as Promise<{ deletedCount: number }>;
+    },
+    onSuccess: () => {
+      // Invalidate failures stats to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failures'] });
+      // Also invalidate overview stats since failure counts are shown there
+      queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] });
+    },
   });
 }

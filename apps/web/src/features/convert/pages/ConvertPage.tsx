@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
 import { Footer, Header } from '@/features/home/components';
+import type { FileValidationError } from '@/features/upload-error';
 import { useDebouncedValue } from '@/hooks';
 import {
   faArrowsRotate,
@@ -145,6 +146,7 @@ export function ConvertPage() {
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // PNG background removal state
   const [pngBackgroundRemovalProgress, setPngBackgroundRemovalProgress] =
@@ -179,6 +181,19 @@ export function ConvertPage() {
     setOptions((prev) => ({ ...prev, pngOptions }));
   }, []);
 
+  // Handle preview error - redirect to error page
+  const handlePreviewError = useCallback(
+    (errorMessage: string) => {
+      const error: FileValidationError = {
+        type: uploadedFile?.type === 'png' ? 'invalid-png' : 'invalid-svg',
+        message: errorMessage,
+        fileName: uploadedFile?.name,
+      };
+      navigate('/upload-error', { state: { error } });
+    },
+    [navigate, uploadedFile?.type, uploadedFile?.name],
+  );
+
   // Handle PNG background removal using AI
   const handlePngBackgroundRemoval = useCallback(async () => {
     if (!uploadedFile || uploadedFile.type !== 'png') return;
@@ -211,6 +226,7 @@ export function ConvertPage() {
 
     setConversionState('converting');
     setProgress(0);
+    setErrorMessage(null);
 
     // Get format-specific steps
     const formatSteps = getConversionSteps(
@@ -287,7 +303,18 @@ export function ConvertPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Conversion failed: ${errorText}`);
+        // Try to parse JSON error response from NestJS
+        let errorMessage = 'Conversion failed';
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage = errorText || 'Conversion failed';
+        }
+        throw new Error(errorMessage);
       }
 
       updateStep(1, 'completed');
@@ -343,6 +370,11 @@ export function ConvertPage() {
       console.error('Conversion error:', error);
       setConversionState('error');
 
+      // Extract error message for display
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred during conversion.';
+      setErrorMessage(message);
+
       // Mark current step as error
       const currentStepIndex = stepsCopy.findIndex((s) => s.status === 'in_progress');
       if (currentStepIndex !== -1) {
@@ -363,6 +395,7 @@ export function ConvertPage() {
     setConversionState('idle');
     setSteps([...defaultSteps]);
     setProgress(0);
+    setErrorMessage(null);
   }, []);
 
   // Detect small height screens for responsive layout
@@ -432,6 +465,7 @@ export function ConvertPage() {
                 isPng={isPng}
                 pngBackgroundRemovalProgress={pngBackgroundRemovalProgress}
                 onPngBackgroundRemoval={handlePngBackgroundRemoval}
+                onPreviewError={handlePreviewError}
               />
 
               {/* PNG size limitation info - shown for PNG files (hidden on small screens unless there's a limitation) */}
@@ -520,6 +554,7 @@ export function ConvertPage() {
                   steps={steps}
                   progress={progress}
                   estimatedTime={3}
+                  errorMessage={errorMessage}
                 />
               )}
 
