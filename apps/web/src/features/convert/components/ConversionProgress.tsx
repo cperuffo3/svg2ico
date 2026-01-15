@@ -1,6 +1,12 @@
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { faCheck, faClock, faShieldHalved, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCheck,
+  faClock,
+  faShieldHalved,
+  faSpinner,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useState } from 'react';
 import type { ConversionState, ConversionStep } from '../types';
@@ -29,6 +35,7 @@ interface ConversionProgressProps {
   steps: ConversionStep[];
   estimatedTime?: number;
   progress: number;
+  errorMessage?: string | null;
 }
 
 function StepIcon({ status }: { status: ConversionStep['status'] }) {
@@ -86,6 +93,7 @@ export function ConversionProgress({
   steps,
   estimatedTime = 3,
   progress,
+  errorMessage,
 }: ConversionProgressProps) {
   const isSmallHeight = useIsSmallHeight();
 
@@ -95,19 +103,37 @@ export function ConversionProgress({
 
   const isConverting = state === 'converting';
   const isComplete = state === 'completed';
+  const isError = state === 'error';
 
-  // Hide steps on small screens when conversion is complete
-  const shouldShowSteps = !(isSmallHeight && isComplete);
+  // Hide steps on small screens when conversion is complete or error
+  const shouldShowSteps = !(isSmallHeight && (isComplete || isError));
 
   return (
-    <div className="rounded-xl border border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to p-6">
+    <div
+      className={cn(
+        'rounded-xl border p-6',
+        isError
+          ? 'border-destructive/30 bg-destructive/5'
+          : 'border-section-primary-border bg-linear-to-b from-section-primary-from to-section-primary-to',
+      )}
+    >
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+        <div
+          className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-full',
+            isError ? 'bg-destructive' : 'bg-primary',
+          )}
+        >
           {isConverting ? (
             <FontAwesomeIcon
               icon={faSpinner}
               className="h-5 w-5 animate-spin text-primary-foreground"
+            />
+          ) : isError ? (
+            <FontAwesomeIcon
+              icon={faTriangleExclamation}
+              className="h-5 w-5 text-destructive-foreground"
             />
           ) : (
             <FontAwesomeIcon icon={faCheck} className="h-5 w-5 text-primary-foreground" />
@@ -115,43 +141,62 @@ export function ConversionProgress({
         </div>
         <div className="flex flex-1 flex-col gap-1">
           <span className="text-lg font-bold text-foreground">
-            {isConverting ? 'Converting your icon...' : 'Conversion complete!'}
+            {isConverting
+              ? 'Converting your icon...'
+              : isError
+                ? 'Conversion failed'
+                : 'Conversion complete!'}
           </span>
           <span className="text-sm text-muted-foreground">
             {isConverting
               ? 'Processing SVG and generating icon files'
-              : 'Your files are ready for download'}
+              : isError
+                ? 'Something went wrong during the conversion'
+                : 'Your files are ready for download'}
           </span>
         </div>
       </div>
 
+      {/* Error message */}
+      {isError && errorMessage && (
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+          <p className="wrap-break-word text-sm text-destructive">{errorMessage}</p>
+        </div>
+      )}
+
       {/* Progress bar */}
       <div className="mt-4">
-        <Progress value={progress} className="h-3 bg-card" indicatorClassName="bg-primary" />
+        <Progress
+          value={progress}
+          className="h-3 bg-card"
+          indicatorClassName={isError ? 'bg-destructive' : 'bg-primary'}
+        />
       </div>
 
-      {/* Steps - hidden on small screens when complete */}
+      {/* Steps - hidden on small screens when complete, hide steps after error */}
       {shouldShowSteps && (
         <div className="mt-4 flex flex-col gap-3">
-          {steps.map((step) => (
-            <div
-              key={step.id}
-              className={cn('flex items-center gap-3', step.status === 'pending' && 'opacity-40')}
-            >
-              <StepIcon status={step.status} />
-              <div className="flex flex-1 flex-col">
-                <span
-                  className={cn(
-                    'text-sm font-medium',
-                    step.status === 'pending' ? 'text-muted-foreground' : 'text-foreground',
-                  )}
-                >
-                  {step.label}
-                </span>
-                <StepStatus status={step.status} />
+          {steps
+            .slice(0, isError ? steps.findIndex((s) => s.status === 'error') + 1 : steps.length)
+            .map((step) => (
+              <div
+                key={step.id}
+                className={cn('flex items-center gap-3', step.status === 'pending' && 'opacity-40')}
+              >
+                <StepIcon status={step.status} />
+                <div className="flex flex-1 flex-col">
+                  <span
+                    className={cn(
+                      'text-sm font-medium',
+                      step.status === 'pending' ? 'text-muted-foreground' : 'text-foreground',
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                  <StepStatus status={step.status} />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
 

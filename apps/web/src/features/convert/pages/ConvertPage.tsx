@@ -145,6 +145,7 @@ export function ConvertPage() {
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // PNG background removal state
   const [pngBackgroundRemovalProgress, setPngBackgroundRemovalProgress] =
@@ -211,6 +212,7 @@ export function ConvertPage() {
 
     setConversionState('converting');
     setProgress(0);
+    setErrorMessage(null);
 
     // Get format-specific steps
     const formatSteps = getConversionSteps(
@@ -287,7 +289,18 @@ export function ConvertPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Conversion failed: ${errorText}`);
+        // Try to parse JSON error response from NestJS
+        let errorMessage = 'Conversion failed';
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage = errorText || 'Conversion failed';
+        }
+        throw new Error(errorMessage);
       }
 
       updateStep(1, 'completed');
@@ -343,6 +356,11 @@ export function ConvertPage() {
       console.error('Conversion error:', error);
       setConversionState('error');
 
+      // Extract error message for display
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred during conversion.';
+      setErrorMessage(message);
+
       // Mark current step as error
       const currentStepIndex = stepsCopy.findIndex((s) => s.status === 'in_progress');
       if (currentStepIndex !== -1) {
@@ -363,6 +381,7 @@ export function ConvertPage() {
     setConversionState('idle');
     setSteps([...defaultSteps]);
     setProgress(0);
+    setErrorMessage(null);
   }, []);
 
   // Detect small height screens for responsive layout
@@ -520,6 +539,7 @@ export function ConvertPage() {
                   steps={steps}
                   progress={progress}
                   estimatedTime={3}
+                  errorMessage={errorMessage}
                 />
               )}
 
