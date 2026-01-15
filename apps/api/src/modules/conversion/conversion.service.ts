@@ -5,9 +5,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import {
+  analyzeThreats,
   containsDangerousPatterns,
+  createMalformedAnalysis,
+  detectExternalReferences,
   isQuickSafe,
   sanitizeSvg,
+  ThreatClassification,
+  type ExternalReferenceAnalysis,
+  type ThreatAnalysis,
 } from '../../common/security/index.js';
 import { WorkerPoolService } from '../workers/worker-pool.service.js';
 import type {
@@ -66,18 +72,42 @@ export class ConversionService {
       const svgString = inputBuffer.toString('utf-8');
 
       if (!this.isValidSvg(svgString)) {
-        this.logger.warn(`Rejected invalid SVG: ${originalFilename}`);
+        const analysis = createMalformedAnalysis(
+          ThreatClassification.INVALID_FORMAT,
+          'File does not start with <svg or <?xml declaration',
+        );
+        this.logSecurityEvent(originalFilename, analysis);
         throw new BadRequestException(
           'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
         );
       }
 
-      // Quick security check for obviously malicious content
-      if (!isQuickSafe(svgString)) {
-        this.logger.warn(`Rejected SVG with dangerous patterns: ${originalFilename}`);
+      // Analyze for attack patterns before processing
+      const threatAnalysis = analyzeThreats(svgString);
+      if (threatAnalysis) {
+        this.logSecurityEvent(originalFilename, threatAnalysis);
         throw new BadRequestException(
           'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
         );
+      }
+
+      // Quick security check (backup - should be caught by analyzeThreats)
+      if (!isQuickSafe(svgString)) {
+        const analysis = createMalformedAnalysis(
+          ThreatClassification.INVALID_FORMAT,
+          'Failed quick safety check',
+        );
+        this.logSecurityEvent(originalFilename, analysis);
+        throw new BadRequestException(
+          'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
+        );
+      }
+
+      // Detect external references (log but don't block)
+      // Note: resvg does NOT fetch external URLs by default, so this is primarily for visibility
+      const externalRefs = detectExternalReferences(svgString);
+      if (externalRefs.hasExternalReferences) {
+        this.logExternalReferenceWarning(originalFilename, externalRefs);
       }
 
       // Full sanitization to remove XSS, XXE, and other threats
@@ -93,8 +123,13 @@ export class ConversionService {
 
         // Additional check for dangerous patterns after sanitization
         if (containsDangerousPatterns(sanitizeResult.sanitized)) {
-          this.logger.warn(
-            `SVG still contains dangerous patterns after sanitization: ${originalFilename}`,
+          const postAnalysis = analyzeThreats(sanitizeResult.sanitized);
+          this.logSecurityEvent(
+            originalFilename,
+            postAnalysis ?? createMalformedAnalysis(
+              ThreatClassification.INVALID_FORMAT,
+              'Dangerous patterns remain after sanitization',
+            ),
           );
           throw new BadRequestException(
             'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
@@ -104,14 +139,22 @@ export class ConversionService {
         if (error instanceof BadRequestException) {
           throw error;
         }
-        this.logger.warn(`SVG sanitization failed for ${originalFilename}: ${error}`);
+        const analysis = createMalformedAnalysis(
+          ThreatClassification.CORRUPTED_FILE,
+          `Sanitization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        this.logSecurityEvent(originalFilename, analysis);
         throw new BadRequestException(
           'The uploaded SVG could not be processed due to security validation. Please try a different file.',
         );
       }
     } else if (sourceType === 'png') {
       if (!this.isValidPng(inputBuffer)) {
-        this.logger.warn(`Rejected invalid PNG: ${originalFilename}`);
+        const analysis = createMalformedAnalysis(
+          ThreatClassification.WRONG_FILE_TYPE,
+          'File does not have valid PNG signature',
+        );
+        this.logSecurityEvent(originalFilename, analysis);
         throw new BadRequestException(
           'The uploaded file is not a valid PNG. Please upload a valid PNG image.',
         );
@@ -220,5 +263,62 @@ export class ConversionService {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  /**
+   * Log security events with appropriate severity based on threat classification.
+   * Attack attempts are logged at ERROR level; malformed files at WARN level.
+   */
+  private logSecurityEvent(filename: string, analysis: ThreatAnalysis): void {
+    const details = {
+      filename,
+      classification: analysis.classification,
+      isLikelyAttack: analysis.isLikelyAttack,
+      patterns: analysis.matchedPatterns,
+    };
+
+    if (analysis.isLikelyAttack) {
+      // Likely attack - log at error level for alerting
+      this.logger.error(
+        `SECURITY: Possible attack detected in "${filename}" - ${analysis.description}`,
+        JSON.stringify(details),
+      );
+    } else {
+      // Likely malformed file - log at warn level
+      this.logger.warn(
+        `Rejected malformed file "${filename}" - ${analysis.description}`,
+      );
+    }
+  }
+
+  /**
+   * Log external reference warnings. These are suspicious but allowed to proceed.
+   * SSRF indicators are logged at WARN level; regular external refs at DEBUG.
+   *
+   * Note: resvg does NOT fetch external URLs by default (only local filesystem),
+   * so these are logged for visibility rather than active threat prevention.
+   */
+  private logExternalReferenceWarning(
+    filename: string,
+    analysis: ExternalReferenceAnalysis,
+  ): void {
+    const details = {
+      filename,
+      references: analysis.references,
+      hasSsrfIndicators: analysis.hasSsrfIndicators,
+    };
+
+    if (analysis.hasSsrfIndicators) {
+      // Potential SSRF attempt - log at warn level
+      this.logger.warn(
+        `SECURITY: Potential SSRF indicators in "${filename}" - ${analysis.references.join(', ')}`,
+        JSON.stringify(details),
+      );
+    } else {
+      // Regular external references - log at debug level (informational)
+      this.logger.debug(
+        `External references detected in "${filename}": ${analysis.references.join(', ')}`,
+      );
+    }
   }
 }

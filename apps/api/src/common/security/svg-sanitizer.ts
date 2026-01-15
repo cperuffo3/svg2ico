@@ -12,6 +12,179 @@ import createDOMPurify from 'isomorphic-dompurify';
 
 const DOMPurify = createDOMPurify;
 
+/**
+ * Classification of why a file was rejected or flagged
+ */
+export enum ThreatClassification {
+  // Attack indicators - these patterns are almost never in legitimate files
+  XXE_ATTACK = 'xxe_attack',
+  SCRIPT_INJECTION = 'script_injection',
+  EVENT_HANDLER_INJECTION = 'event_handler_injection',
+  PROTOCOL_HANDLER_ATTACK = 'protocol_handler_attack',
+  EXTERNAL_ENTITY_ATTACK = 'external_entity_attack',
+
+  // Suspicious but not necessarily malicious - logged but not blocked
+  EXTERNAL_RESOURCE_REFERENCE = 'external_resource_reference',
+
+  // Malformed file indicators - likely user error, not malicious
+  INVALID_FORMAT = 'invalid_format',
+  WRONG_FILE_TYPE = 'wrong_file_type',
+  CORRUPTED_FILE = 'corrupted_file',
+  FILE_TOO_LARGE = 'file_too_large',
+}
+
+export interface ThreatAnalysis {
+  classification: ThreatClassification;
+  isLikelyAttack: boolean;
+  matchedPatterns: string[];
+  description: string;
+}
+
+/**
+ * Attack patterns - these are almost NEVER present in legitimate SVG files
+ */
+const ATTACK_PATTERNS: Array<{ pattern: RegExp; classification: ThreatClassification; description: string }> = [
+  // XXE patterns
+  { pattern: /<!ENTITY/i, classification: ThreatClassification.XXE_ATTACK, description: 'ENTITY declaration (XXE)' },
+  { pattern: /<!DOCTYPE[^>]*\[/i, classification: ThreatClassification.XXE_ATTACK, description: 'DOCTYPE with internal subset (XXE)' },
+  { pattern: /SYSTEM\s+["']/i, classification: ThreatClassification.XXE_ATTACK, description: 'SYSTEM identifier (XXE)' },
+  { pattern: /PUBLIC\s+["']/i, classification: ThreatClassification.XXE_ATTACK, description: 'PUBLIC identifier (XXE)' },
+
+  // Script injection
+  { pattern: /<script/i, classification: ThreatClassification.SCRIPT_INJECTION, description: 'Script tag' },
+
+  // Protocol handlers
+  { pattern: /javascript:/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'javascript: protocol' },
+  { pattern: /vbscript:/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'vbscript: protocol' },
+  { pattern: /data:\s*text\/html/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'data:text/html URI' },
+
+  // Event handlers
+  { pattern: /\son\w+\s*=/i, classification: ThreatClassification.EVENT_HANDLER_INJECTION, description: 'Event handler attribute' },
+
+  // External entity references
+  { pattern: /xmlns:xi\s*=.*xinclude/i, classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK, description: 'XInclude namespace' },
+  { pattern: /xi:include/i, classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK, description: 'XInclude element' },
+];
+
+/**
+ * Analyze content and classify the threat level
+ * Returns null if content appears safe
+ */
+export function analyzeThreats(svgContent: string): ThreatAnalysis | null {
+  const matchedPatterns: string[] = [];
+  let classification: ThreatClassification | null = null;
+
+  for (const { pattern, classification: cls, description } of ATTACK_PATTERNS) {
+    if (pattern.test(svgContent)) {
+      matchedPatterns.push(description);
+      // Use the first (most severe) classification found
+      if (!classification) {
+        classification = cls;
+      }
+    }
+  }
+
+  if (classification && matchedPatterns.length > 0) {
+    return {
+      classification,
+      isLikelyAttack: true,
+      matchedPatterns,
+      description: `Detected attack patterns: ${matchedPatterns.join(', ')}`,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Create a threat analysis for malformed (but not malicious) files
+ */
+export function createMalformedAnalysis(
+  classification: ThreatClassification,
+  description: string,
+): ThreatAnalysis {
+  return {
+    classification,
+    isLikelyAttack: false,
+    matchedPatterns: [],
+    description,
+  };
+}
+
+/**
+ * Patterns that indicate external resource references.
+ * These are suspicious but not necessarily malicious - could be SSRF attempts
+ * or legitimate SVGs that reference external assets.
+ *
+ * Note: resvg does NOT fetch external URLs by default (only local files),
+ * but we log these for visibility and potential future blocking.
+ */
+const EXTERNAL_REFERENCE_PATTERNS: Array<{ pattern: RegExp; description: string }> = [
+  // HTTP/HTTPS URLs in href attributes
+  { pattern: /\bhref\s*=\s*["']https?:\/\//i, description: 'HTTP(S) URL in href' },
+  { pattern: /\bxlink:href\s*=\s*["']https?:\/\//i, description: 'HTTP(S) URL in xlink:href' },
+
+  // External URLs in image elements
+  { pattern: /<image[^>]*\bhref\s*=\s*["']https?:\/\//i, description: 'External image reference' },
+
+  // CSS url() with external references
+  { pattern: /url\s*\(\s*["']?https?:\/\//i, description: 'External URL in CSS url()' },
+
+  // @import with external URLs
+  { pattern: /@import\s+["']?https?:\/\//i, description: 'External @import' },
+  { pattern: /@import\s+url\s*\(/i, description: '@import url() directive' },
+
+  // Potential SSRF targets (internal network, cloud metadata)
+  { pattern: /\bhref\s*=\s*["']https?:\/\/169\.254\./i, description: 'Cloud metadata URL (169.254.x.x)' },
+  { pattern: /\bhref\s*=\s*["']https?:\/\/localhost/i, description: 'Localhost reference' },
+  { pattern: /\bhref\s*=\s*["']https?:\/\/127\./i, description: 'Loopback reference (127.x.x.x)' },
+  { pattern: /\bhref\s*=\s*["']https?:\/\/10\./i, description: 'Private network reference (10.x.x.x)' },
+  { pattern: /\bhref\s*=\s*["']https?:\/\/192\.168\./i, description: 'Private network reference (192.168.x.x)' },
+  { pattern: /\bhref\s*=\s*["']https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./i, description: 'Private network reference (172.16-31.x.x)' },
+
+  // file:// protocol (local file access)
+  { pattern: /\bhref\s*=\s*["']file:\/\//i, description: 'file:// protocol reference' },
+];
+
+export interface ExternalReferenceAnalysis {
+  hasExternalReferences: boolean;
+  references: string[];
+  hasSsrfIndicators: boolean;
+}
+
+/**
+ * Detect external resource references in SVG content.
+ * Returns details about what was found for logging purposes.
+ * Does NOT block - just provides visibility.
+ */
+export function detectExternalReferences(svgContent: string): ExternalReferenceAnalysis {
+  const references: string[] = [];
+  let hasSsrfIndicators = false;
+
+  for (const { pattern, description } of EXTERNAL_REFERENCE_PATTERNS) {
+    if (pattern.test(svgContent)) {
+      references.push(description);
+
+      // Check if this looks like an SSRF attempt (internal network targets)
+      if (
+        description.includes('Cloud metadata') ||
+        description.includes('Localhost') ||
+        description.includes('Loopback') ||
+        description.includes('Private network') ||
+        description.includes('file://')
+      ) {
+        hasSsrfIndicators = true;
+      }
+    }
+  }
+
+  return {
+    hasExternalReferences: references.length > 0,
+    references,
+    hasSsrfIndicators,
+  };
+}
+
 // Configure DOMPurify for SVG sanitization
 const DOMPURIFY_CONFIG = {
   USE_PROFILES: { svg: true, svgFilters: true },
