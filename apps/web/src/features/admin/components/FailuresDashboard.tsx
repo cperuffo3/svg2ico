@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useFailuresStats } from '../hooks';
+import { Button } from '@/components/ui/button';
+import { useFailuresStats, useResetFailuresStats } from '../hooks';
 import type { FailureByConfig, FailureByOption } from '../types';
 import { StatCard } from './StatCard';
 
@@ -61,6 +63,26 @@ function formatTimeAgo(dateString: string): string {
 
 export function FailuresDashboard({ password, onAuthError }: FailuresDashboardProps) {
   const { data, isLoading, error } = useFailuresStats(password);
+  const resetMutation = useResetFailuresStats(password);
+  const [lastResetCount, setLastResetCount] = useState<number | null>(null);
+
+  const handleResetFailures = async () => {
+    if (!data || data.totalFailures === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to reset all failure statistics?\n\nThis will permanently delete ${data.totalFailures.toLocaleString()} failure record${data.totalFailures === 1 ? '' : 's'}. Successful conversion records will not be affected.`
+    );
+
+    if (confirmed) {
+      try {
+        const result = await resetMutation.mutateAsync();
+        setLastResetCount(result.deletedCount);
+        setTimeout(() => setLastResetCount(null), 5000);
+      } catch {
+        // Error handling is done by the mutation
+      }
+    }
+  };
 
   if (error?.message === 'UNAUTHORIZED') {
     onAuthError();
@@ -124,6 +146,34 @@ export function FailuresDashboard({ password, onAuthError }: FailuresDashboardPr
           value={`${data.last24HoursFailureRate}%`}
           subtitle="Last 24 hours"
         />
+      </div>
+
+      {/* Reset Failures */}
+      <div className="flex items-center justify-between bg-card border rounded-lg p-4">
+        <div>
+          <h3 className="font-medium">Reset Failure Statistics</h3>
+          <p className="text-sm text-muted-foreground">
+            Delete all failure records while keeping successful conversion data intact
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastResetCount !== null && (
+            <span className="text-sm text-green-600">
+              Deleted {lastResetCount.toLocaleString()} record{lastResetCount === 1 ? '' : 's'}
+            </span>
+          )}
+          {resetMutation.error && (
+            <span className="text-sm text-red-500">Reset failed</span>
+          )}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleResetFailures}
+            disabled={resetMutation.isPending || data.totalFailures === 0}
+          >
+            {resetMutation.isPending ? 'Resetting...' : 'Reset Failures'}
+          </Button>
+        </div>
       </div>
 
       {/* Error Groups */}

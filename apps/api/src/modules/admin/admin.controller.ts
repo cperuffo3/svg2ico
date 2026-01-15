@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Logger, UseGuards } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AdminGuard } from './admin.guard.js';
 import { AdminService } from './admin.service.js';
@@ -94,5 +94,17 @@ export class AdminController {
   async getConfigurationsStats(): Promise<ConfigurationsStats> {
     this.logger.log('Fetching configurations stats');
     return this.adminService.getConfigurationsStats();
+  }
+
+  @Delete('stats/failures')
+  @ApiOperation({
+    summary: 'Reset failure statistics',
+    description: 'Deletes all failed conversion records while keeping successful conversions intact',
+  })
+  @ApiResponse({ status: 200, description: 'Number of deleted failure records' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async resetFailuresStats(): Promise<{ deletedCount: number }> {
+    this.logger.log('Resetting failures stats');
+    return this.adminService.resetFailuresStats();
   }
 }

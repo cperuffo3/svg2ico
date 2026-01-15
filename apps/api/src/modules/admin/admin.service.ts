@@ -621,4 +621,12 @@ export class AdminService {
       }))
       .sort((a, b) => b.count - a.count);
   }
+
+  async resetFailuresStats(): Promise<{ deletedCount: number }> {
+    const result = await this.prisma.conversionMetric.deleteMany({
+      where: { success: false },
+    });
+
+    return { deletedCount: result.count };
+  }
 }
