@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { RoundnessSelector } from '@/components/ui/roundness-selector';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
-import { faTrash, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faTriangleExclamation, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useMemo, useState } from 'react';
 import type {
@@ -94,6 +94,8 @@ interface SvgPreviewProps {
   isPng?: boolean;
   pngBackgroundRemovalProgress?: PngBackgroundRemovalProgress;
   onPngBackgroundRemoval?: () => void;
+  // Preview error callback
+  onPreviewError?: (error: string) => void;
 }
 
 export function SvgPreview({
@@ -110,6 +112,7 @@ export function SvgPreview({
   isPng: isPngProp,
   pngBackgroundRemovalProgress,
   onPngBackgroundRemoval,
+  onPreviewError,
 }: SvgPreviewProps) {
   // Calculate border radius in pixels based on percentage of canvas height (160px)
   const canvasSize = 160; // h-40 = 10rem = 160px
@@ -117,6 +120,19 @@ export function SvgPreview({
   const [showAppColors, setShowAppColors] = useState(false);
   const [previewContext, setPreviewContext] = useState<PreviewContext>('chrome');
   const [previewTheme, setPreviewTheme] = useState<PreviewTheme>('light');
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const handleImageError = useCallback(() => {
+    const errorMsg = isPngProp
+      ? 'Failed to render PNG image. The file may be corrupted.'
+      : 'Failed to render SVG image. The file may be malformed.';
+    setPreviewError(errorMsg);
+    onPreviewError?.(errorMsg);
+  }, [isPngProp, onPreviewError]);
+
+  const handleImageLoad = useCallback(() => {
+    setPreviewError(null);
+  }, []);
 
   const appBackgroundColor = previewBackgrounds[previewContext][previewTheme];
 
@@ -219,12 +235,22 @@ export function SvgPreview({
               }}
             >
               {/* SVG scaled within the canvas - at 100% it renders at its natural size */}
-              <img
-                src={processedSvgDataUrl}
-                alt="SVG Preview"
-                className="h-full w-full object-contain"
-                style={{ transform: `scale(${scale / 100})` }}
-              />
+              {previewError ? (
+                <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <FontAwesomeIcon icon={faTriangleExclamation} className="h-8 w-8 text-destructive" />
+                  <p className="text-xs text-destructive">{previewError}</p>
+                </div>
+              ) : (
+                <img
+                  key={processedSvgDataUrl}
+                  src={processedSvgDataUrl}
+                  alt="SVG Preview"
+                  className="h-full w-full object-contain"
+                  style={{ transform: `scale(${scale / 100})` }}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
+                />
+              )}
             </div>
           </div>
           {/* Background mode toggle */}

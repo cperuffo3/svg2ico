@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
 import { Footer, Header } from '@/features/home/components';
+import type { FileValidationError } from '@/features/upload-error';
 import { useDebouncedValue } from '@/hooks';
 import {
   faArrowsRotate,
@@ -179,6 +180,19 @@ export function ConvertPage() {
   const handlePngOptionsChange = useCallback((pngOptions: PngOutputOptions) => {
     setOptions((prev) => ({ ...prev, pngOptions }));
   }, []);
+
+  // Handle preview error - redirect to error page
+  const handlePreviewError = useCallback(
+    (errorMessage: string) => {
+      const error: FileValidationError = {
+        type: uploadedFile?.type === 'png' ? 'invalid-png' : 'invalid-svg',
+        message: errorMessage,
+        fileName: uploadedFile?.name,
+      };
+      navigate('/upload-error', { state: { error } });
+    },
+    [navigate, uploadedFile?.type, uploadedFile?.name],
+  );
 
   // Handle PNG background removal using AI
   const handlePngBackgroundRemoval = useCallback(async () => {
@@ -451,6 +465,7 @@ export function ConvertPage() {
                 isPng={isPng}
                 pngBackgroundRemovalProgress={pngBackgroundRemovalProgress}
                 onPngBackgroundRemoval={handlePngBackgroundRemoval}
+                onPreviewError={handlePreviewError}
               />
 
               {/* PNG size limitation info - shown for PNG files (hidden on small screens unless there's a limitation) */}
