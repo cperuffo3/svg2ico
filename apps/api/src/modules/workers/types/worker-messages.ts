@@ -63,4 +63,5 @@ export interface Job {
   result?: ConversionJobResult;
   resolve: (result: ConversionJobResult) => void;
   reject: (error: Error) => void;
+  timeoutId?: ReturnType<typeof setTimeout>;
 }

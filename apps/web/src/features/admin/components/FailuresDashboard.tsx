@@ -1,6 +1,6 @@
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Button } from '@/components/ui/button';
 import { useFailuresStats, useResetFailuresStats } from '../hooks';
 import type { FailureByConfig, FailureByOption } from '../types';
 import { StatCard } from './StatCard';
@@ -70,7 +70,7 @@ export function FailuresDashboard({ password, onAuthError }: FailuresDashboardPr
     if (!data || data.totalFailures === 0) return;
 
     const confirmed = window.confirm(
-      `Are you sure you want to reset all failure statistics?\n\nThis will permanently delete ${data.totalFailures.toLocaleString()} failure record${data.totalFailures === 1 ? '' : 's'}. Successful conversion records will not be affected.`
+      `Are you sure you want to reset all failure statistics?\n\nThis will permanently delete ${data.totalFailures.toLocaleString()} failure record${data.totalFailures === 1 ? '' : 's'}. Successful conversion records will not be affected.`,
     );
 
     if (confirmed) {
@@ -162,9 +162,7 @@ export function FailuresDashboard({ password, onAuthError }: FailuresDashboardPr
               Deleted {lastResetCount.toLocaleString()} record{lastResetCount === 1 ? '' : 's'}
             </span>
           )}
-          {resetMutation.error && (
-            <span className="text-sm text-red-500">Reset failed</span>
-          )}
+          {resetMutation.error && <span className="text-sm text-red-500">Reset failed</span>}
           <Button
             variant="destructive"
             size="sm"

@@ -43,27 +43,75 @@ export interface ThreatAnalysis {
 /**
  * Attack patterns - these are almost NEVER present in legitimate SVG files
  */
-const ATTACK_PATTERNS: Array<{ pattern: RegExp; classification: ThreatClassification; description: string }> = [
+const ATTACK_PATTERNS: Array<{
+  pattern: RegExp;
+  classification: ThreatClassification;
+  description: string;
+}> = [
   // XXE patterns
-  { pattern: /<!ENTITY/i, classification: ThreatClassification.XXE_ATTACK, description: 'ENTITY declaration (XXE)' },
-  { pattern: /<!DOCTYPE[^>]*\[/i, classification: ThreatClassification.XXE_ATTACK, description: 'DOCTYPE with internal subset (XXE)' },
-  { pattern: /SYSTEM\s+["']/i, classification: ThreatClassification.XXE_ATTACK, description: 'SYSTEM identifier (XXE)' },
-  { pattern: /PUBLIC\s+["']/i, classification: ThreatClassification.XXE_ATTACK, description: 'PUBLIC identifier (XXE)' },
+  {
+    pattern: /<!ENTITY/i,
+    classification: ThreatClassification.XXE_ATTACK,
+    description: 'ENTITY declaration (XXE)',
+  },
+  {
+    pattern: /<!DOCTYPE[^>]*\[/i,
+    classification: ThreatClassification.XXE_ATTACK,
+    description: 'DOCTYPE with internal subset (XXE)',
+  },
+  {
+    pattern: /SYSTEM\s+["']/i,
+    classification: ThreatClassification.XXE_ATTACK,
+    description: 'SYSTEM identifier (XXE)',
+  },
+  {
+    pattern: /PUBLIC\s+["']/i,
+    classification: ThreatClassification.XXE_ATTACK,
+    description: 'PUBLIC identifier (XXE)',
+  },
 
   // Script injection
-  { pattern: /<script/i, classification: ThreatClassification.SCRIPT_INJECTION, description: 'Script tag' },
+  {
+    pattern: /<script/i,
+    classification: ThreatClassification.SCRIPT_INJECTION,
+    description: 'Script tag',
+  },
 
   // Protocol handlers
-  { pattern: /javascript:/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'javascript: protocol' },
-  { pattern: /vbscript:/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'vbscript: protocol' },
-  { pattern: /data:\s*text\/html/i, classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK, description: 'data:text/html URI' },
+  {
+    pattern: /javascript:/i,
+    classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK,
+    description: 'javascript: protocol',
+  },
+  {
+    pattern: /vbscript:/i,
+    classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK,
+    description: 'vbscript: protocol',
+  },
+  {
+    pattern: /data:\s*text\/html/i,
+    classification: ThreatClassification.PROTOCOL_HANDLER_ATTACK,
+    description: 'data:text/html URI',
+  },
 
   // Event handlers
-  { pattern: /\son\w+\s*=/i, classification: ThreatClassification.EVENT_HANDLER_INJECTION, description: 'Event handler attribute' },
+  {
+    pattern: /\son\w+\s*=/i,
+    classification: ThreatClassification.EVENT_HANDLER_INJECTION,
+    description: 'Event handler attribute',
+  },
 
   // External entity references
-  { pattern: /xmlns:xi\s*=.*xinclude/i, classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK, description: 'XInclude namespace' },
-  { pattern: /xi:include/i, classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK, description: 'XInclude element' },
+  {
+    pattern: /xmlns:xi\s*=.*xinclude/i,
+    classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK,
+    description: 'XInclude namespace',
+  },
+  {
+    pattern: /xi:include/i,
+    classification: ThreatClassification.EXTERNAL_ENTITY_ATTACK,
+    description: 'XInclude element',
+  },
 ];
 
 /**
@@ -135,12 +183,24 @@ const EXTERNAL_REFERENCE_PATTERNS: Array<{ pattern: RegExp; description: string 
   { pattern: /@import\s+url\s*\(/i, description: '@import url() directive' },
 
   // Potential SSRF targets (internal network, cloud metadata)
-  { pattern: /\bhref\s*=\s*["']https?:\/\/169\.254\./i, description: 'Cloud metadata URL (169.254.x.x)' },
+  {
+    pattern: /\bhref\s*=\s*["']https?:\/\/169\.254\./i,
+    description: 'Cloud metadata URL (169.254.x.x)',
+  },
   { pattern: /\bhref\s*=\s*["']https?:\/\/localhost/i, description: 'Localhost reference' },
   { pattern: /\bhref\s*=\s*["']https?:\/\/127\./i, description: 'Loopback reference (127.x.x.x)' },
-  { pattern: /\bhref\s*=\s*["']https?:\/\/10\./i, description: 'Private network reference (10.x.x.x)' },
-  { pattern: /\bhref\s*=\s*["']https?:\/\/192\.168\./i, description: 'Private network reference (192.168.x.x)' },
-  { pattern: /\bhref\s*=\s*["']https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./i, description: 'Private network reference (172.16-31.x.x)' },
+  {
+    pattern: /\bhref\s*=\s*["']https?:\/\/10\./i,
+    description: 'Private network reference (10.x.x.x)',
+  },
+  {
+    pattern: /\bhref\s*=\s*["']https?:\/\/192\.168\./i,
+    description: 'Private network reference (192.168.x.x)',
+  },
+  {
+    pattern: /\bhref\s*=\s*["']https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./i,
+    description: 'Private network reference (172.16-31.x.x)',
+  },
 
   // file:// protocol (local file access)
   { pattern: /\bhref\s*=\s*["']file:\/\//i, description: 'file:// protocol reference' },

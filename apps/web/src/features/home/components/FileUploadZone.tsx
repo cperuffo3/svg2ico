@@ -1,7 +1,7 @@
 import type { PngColorDepth, UploadedFile } from '@/features/convert/types';
 import { parsePngMetadataFromFile } from '@/features/convert/utils/pngMetadata';
-import { validatePngFile, validateSvgFile } from '@/features/upload-error';
 import type { FileValidationError } from '@/features/upload-error';
+import { validatePngFile, validateSvgFile } from '@/features/upload-error';
 import {
   faCloudArrowUp,
   faRotate,
@@ -73,11 +73,13 @@ export function FileUploadZone() {
 
           // For PNG files, we need to read dimensions and metadata before navigating
           const img = new Image();
-          const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-            img.onerror = () => reject(new Error('Failed to load PNG image'));
-            img.src = dataUrl;
-          });
+          const dimensions = await new Promise<{ width: number; height: number }>(
+            (resolve, reject) => {
+              img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+              img.onerror = () => reject(new Error('Failed to load PNG image'));
+              img.src = dataUrl;
+            },
+          );
 
           // Parse PNG metadata for DPI and color depth
           const metadata = await parsePngMetadataFromFile(file);

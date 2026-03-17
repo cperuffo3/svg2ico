@@ -3,7 +3,7 @@
  * Always outputs pretty colored logs to terminal.
  * JSON format is only used when exporting to OTEL (not implemented here).
  */
-import { ConsoleLogger, Injectable, LogLevel, Scope } from '@nestjs/common';
+import { ConsoleLogger, Injectable, LogLevel } from '@nestjs/common';
 
 type LogLevelName = 'error' | 'warn' | 'log' | 'debug' | 'verbose';
 
@@ -12,7 +12,7 @@ export interface LogContext {
   [key: string]: unknown;
 }
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class CustomLoggerService extends ConsoleLogger {
   private static logLevel: LogLevelName = 'debug';
   private static initialized = false;

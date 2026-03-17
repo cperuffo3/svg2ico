@@ -99,7 +99,8 @@ export class AdminController {
   @Delete('stats/failures')
   @ApiOperation({
     summary: 'Reset failure statistics',
-    description: 'Deletes all failed conversion records while keeping successful conversions intact',
+    description:
+      'Deletes all failed conversion records while keeping successful conversions intact',
   })
   @ApiResponse({ status: 200, description: 'Number of deleted failure records' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
