@@ -1,7 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { RoundnessSelector } from '@/components/ui/roundness-selector';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
-import { faTrash, faTriangleExclamation, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
+import {
+  faTrash,
+  faTriangleExclamation,
+  faWandMagicSparkles,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useMemo, useState } from 'react';
 import type {
@@ -237,7 +241,10 @@ export function SvgPreview({
               {/* SVG scaled within the canvas - at 100% it renders at its natural size */}
               {previewError ? (
                 <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
-                  <FontAwesomeIcon icon={faTriangleExclamation} className="h-8 w-8 text-destructive" />
+                  <FontAwesomeIcon
+                    icon={faTriangleExclamation}
+                    className="h-8 w-8 text-destructive"
+                  />
                   <p className="text-xs text-destructive">{previewError}</p>
                 </div>
               ) : (

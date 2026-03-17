@@ -126,10 +126,11 @@ export class ConversionService {
           const postAnalysis = analyzeThreats(sanitizeResult.sanitized);
           this.logSecurityEvent(
             originalFilename,
-            postAnalysis ?? createMalformedAnalysis(
-              ThreatClassification.INVALID_FORMAT,
-              'Dangerous patterns remain after sanitization',
-            ),
+            postAnalysis ??
+              createMalformedAnalysis(
+                ThreatClassification.INVALID_FORMAT,
+                'Dangerous patterns remain after sanitization',
+              ),
           );
           throw new BadRequestException(
             'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
@@ -285,9 +286,7 @@ export class ConversionService {
       );
     } else {
       // Likely malformed file - log at warn level
-      this.logger.warn(
-        `Rejected malformed file "${filename}" - ${analysis.description}`,
-      );
+      this.logger.warn(`Rejected malformed file "${filename}" - ${analysis.description}`);
     }
   }
 
@@ -298,10 +297,7 @@ export class ConversionService {
    * Note: resvg does NOT fetch external URLs by default (only local filesystem),
    * so these are logged for visibility rather than active threat prevention.
    */
-  private logExternalReferenceWarning(
-    filename: string,
-    analysis: ExternalReferenceAnalysis,
-  ): void {
+  private logExternalReferenceWarning(filename: string, analysis: ExternalReferenceAnalysis): void {
     const details = {
       filename,
       references: analysis.references,

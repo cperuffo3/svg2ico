@@ -54,10 +54,9 @@ export class AdminService {
       this.prisma.conversionMetric.count({
         where: { createdAt: { gte: last24Hours }, success: false },
       }),
-      this.prisma.conversionMetric.groupBy({
-        by: ['ipHash'],
-        _count: { ipHash: true },
-      }),
+      this.prisma.$queryRaw<
+        [{ count: bigint }]
+      >`SELECT COUNT(DISTINCT "ipHash") as count FROM "ConversionMetric"`,
     ]);
 
     const successRate =
@@ -75,7 +74,7 @@ export class AdminService {
         successful: last24HoursSuccessful,
         failed: last24HoursFailed,
       },
-      uniqueUsers: uniqueUsersResult.length,
+      uniqueUsers: Number(uniqueUsersResult[0]?.count ?? 0),
     };
   }
 
@@ -157,7 +156,29 @@ export class AdminService {
   }
 
   async getFormatsStats(): Promise<FormatsStats> {
-    const [inputFormatCounts, outputFormatCounts, totalCount, allInputSizes] = await Promise.all([
+    const sizeRanges = [
+      { min: 0, max: 1024, label: '< 1 KB' },
+      { min: 1024, max: 10 * 1024, label: '1-10 KB' },
+      { min: 10 * 1024, max: 50 * 1024, label: '10-50 KB' },
+      { min: 50 * 1024, max: 100 * 1024, label: '50-100 KB' },
+      { min: 100 * 1024, max: 500 * 1024, label: '100-500 KB' },
+      { min: 500 * 1024, max: 1024 * 1024, label: '500 KB - 1 MB' },
+      { min: 1024 * 1024, max: Infinity, label: '> 1 MB' },
+    ];
+
+    // Count records per size range using DB queries instead of loading all rows
+    const sizeRangeCounts = sizeRanges.map((range) =>
+      this.prisma.conversionMetric.count({
+        where: {
+          inputSizeBytes: {
+            gte: range.min,
+            ...(range.max !== Infinity ? { lt: range.max } : {}),
+          },
+        },
+      }),
+    );
+
+    const [inputFormatCounts, outputFormatCounts, totalCount, ...rangeCounts] = await Promise.all([
       this.prisma.conversionMetric.groupBy({
         by: ['inputFormat'],
         _count: { inputFormat: true },
@@ -167,9 +188,7 @@ export class AdminService {
         _count: { outputFormat: true },
       }),
       this.prisma.conversionMetric.count(),
-      this.prisma.conversionMetric.findMany({
-        select: { inputSizeBytes: true },
-      }),
+      ...sizeRangeCounts,
     ]);
 
     const inputFormats = inputFormatCounts.map((item) => ({
@@ -186,93 +205,69 @@ export class AdminService {
         totalCount > 0 ? Math.round((item._count.outputFormat / totalCount) * 10000) / 100 : 0,
     }));
 
-    // Calculate input size distribution
-    const inputSizeDistribution = this.calculateSizeDistribution(
-      allInputSizes.map((r) => r.inputSizeBytes),
-      totalCount,
-    );
+    const inputSizeDistribution: SizeDistribution[] = sizeRanges
+      .map((range, i) => ({
+        range: range.label,
+        count: rangeCounts[i],
+        percentage: totalCount > 0 ? Math.round((rangeCounts[i] / totalCount) * 10000) / 100 : 0,
+      }))
+      .filter((r) => r.count > 0);
 
     return { inputFormats, outputFormats, inputSizeDistribution };
   }
 
-  private calculateSizeDistribution(sizes: number[], total: number): SizeDistribution[] {
-    const ranges = [
-      { min: 0, max: 1024, label: '< 1 KB' },
-      { min: 1024, max: 10 * 1024, label: '1-10 KB' },
-      { min: 10 * 1024, max: 50 * 1024, label: '10-50 KB' },
-      { min: 50 * 1024, max: 100 * 1024, label: '50-100 KB' },
-      { min: 100 * 1024, max: 500 * 1024, label: '100-500 KB' },
-      { min: 500 * 1024, max: 1024 * 1024, label: '500 KB - 1 MB' },
-      { min: 1024 * 1024, max: Infinity, label: '> 1 MB' },
-    ];
-
-    const counts = new Map<string, number>();
-    ranges.forEach((r) => counts.set(r.label, 0));
-
-    for (const size of sizes) {
-      for (const range of ranges) {
-        if (size >= range.min && size < range.max) {
-          counts.set(range.label, (counts.get(range.label) ?? 0) + 1);
-          break;
-        }
-      }
-    }
-
-    return ranges
-      .map((range) => ({
-        range: range.label,
-        count: counts.get(range.label) ?? 0,
-        percentage:
-          total > 0 ? Math.round(((counts.get(range.label) ?? 0) / total) * 10000) / 100 : 0,
-      }))
-      .filter((r) => r.count > 0);
-  }
-
   async getPerformanceStats(): Promise<PerformanceStats> {
-    // Get all processing times for percentile calculations
-    const allProcessingTimes = await this.prisma.conversionMetric.findMany({
-      where: {
-        success: true,
-        processingTimeMs: { not: null },
-      },
-      select: { processingTimeMs: true },
-      orderBy: { processingTimeMs: 'asc' },
+    const successFilter = { success: true, processingTimeMs: { not: null } } as const;
+
+    // Get total count of successful conversions with processing times
+    const totalSuccessful = await this.prisma.conversionMetric.count({
+      where: successFilter,
     });
 
-    const times = allProcessingTimes
-      .map((r) => r.processingTimeMs)
-      .filter((t): t is number => t !== null);
+    // Calculate percentiles using offset/limit instead of loading all rows
+    const getPercentileValue = async (p: number): Promise<number> => {
+      if (totalSuccessful === 0) return 0;
+      const offset = Math.max(0, Math.ceil((p / 100) * totalSuccessful) - 1);
+      const result = await this.prisma.conversionMetric.findMany({
+        where: successFilter,
+        select: { processingTimeMs: true },
+        orderBy: { processingTimeMs: 'asc' },
+        skip: offset,
+        take: 1,
+      });
+      return result[0]?.processingTimeMs ?? 0;
+    };
 
-    const p50 = this.percentile(times, 50);
-    const p90 = this.percentile(times, 90);
-    const p99 = this.percentile(times, 99);
-    const avg = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
+    const [p50, p90, p99, avgResult, byFormatData, sizeStats] = await Promise.all([
+      getPercentileValue(50),
+      getPercentileValue(90),
+      getPercentileValue(99),
+      this.prisma.conversionMetric.aggregate({
+        where: successFilter,
+        _avg: { processingTimeMs: true },
+      }),
+      this.prisma.conversionMetric.groupBy({
+        by: ['outputFormat'],
+        where: successFilter,
+        _avg: { processingTimeMs: true },
+        _count: { outputFormat: true },
+      }),
+      this.prisma.conversionMetric.aggregate({
+        where: { success: true },
+        _avg: {
+          inputSizeBytes: true,
+          outputSizeBytes: true,
+        },
+      }),
+    ]);
 
-    // Get by format breakdown
-    const byFormatData = await this.prisma.conversionMetric.groupBy({
-      by: ['outputFormat'],
-      where: {
-        success: true,
-        processingTimeMs: { not: null },
-      },
-      _avg: { processingTimeMs: true },
-      _count: { outputFormat: true },
-    });
+    const avg = avgResult._avg.processingTimeMs ?? 0;
 
     const byFormat = byFormatData.map((item) => ({
       format: item.outputFormat,
       avgProcessingTimeMs: Math.round(item._avg.processingTimeMs ?? 0),
       count: item._count.outputFormat,
     }));
-
-    // Get file size stats
-    const sizeStats = await this.prisma.conversionMetric.aggregate({
-      where: { success: true },
-      _avg: {
-        inputSizeBytes: true,
-        outputSizeBytes: true,
-      },
-    });
 
     const avgInputSize = sizeStats._avg.inputSizeBytes ?? 0;
     const avgOutputSize = sizeStats._avg.outputSizeBytes ?? 0;
@@ -289,12 +284,6 @@ export class AdminService {
       avgOutputSizeBytes: Math.round(avgOutputSize),
       compressionRatio,
     };
-  }
-
-  private percentile(sortedArray: number[], p: number): number {
-    if (sortedArray.length === 0) return 0;
-    const index = Math.ceil((p / 100) * sortedArray.length) - 1;
-    return sortedArray[Math.max(0, index)];
   }
 
   async getFailuresStats(): Promise<FailuresStats> {
@@ -350,7 +339,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         take: 20,
       }),
-      // Get failures with conversion options for option analysis
+      // Get recent failures with conversion options for option analysis (capped to 10k)
       this.prisma.conversionMetric.findMany({
         where: {
           success: false,
@@ -361,6 +350,8 @@ export class AdminService {
         select: {
           conversionOptions: true,
         },
+        orderBy: { createdAt: 'desc' },
+        take: 10000,
       }),
     ]);
 
@@ -481,7 +472,15 @@ export class AdminService {
   }
 
   async getConfigurationsStats(): Promise<ConfigurationsStats> {
-    // Get all records with conversion options
+    const totalWithOptions = await this.prisma.conversionMetric.count({
+      where: {
+        conversionOptions: {
+          not: { equals: null },
+        },
+      },
+    });
+
+    // Sample the most recent 10,000 records to avoid loading the entire table
     const records = await this.prisma.conversionMetric.findMany({
       where: {
         conversionOptions: {
@@ -491,9 +490,9 @@ export class AdminService {
       select: {
         conversionOptions: true,
       },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
     });
-
-    const totalWithOptions = records.length;
 
     // Aggregate each option
     const scaleMap = new Map<string, number>();

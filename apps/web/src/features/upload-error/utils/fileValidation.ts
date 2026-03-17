@@ -7,7 +7,10 @@ import type { FileValidationError } from '../pages/UploadErrorPage';
 const SVG_ATTACK_PATTERNS: Array<{ pattern: RegExp; description: string }> = [
   // XXE patterns
   { pattern: /<!ENTITY/i, description: 'ENTITY declaration (potential XXE attack)' },
-  { pattern: /<!DOCTYPE[^>]*\[/i, description: 'DOCTYPE with internal subset (potential XXE attack)' },
+  {
+    pattern: /<!DOCTYPE[^>]*\[/i,
+    description: 'DOCTYPE with internal subset (potential XXE attack)',
+  },
   { pattern: /SYSTEM\s+["']/i, description: 'SYSTEM identifier (potential XXE attack)' },
   { pattern: /PUBLIC\s+["']/i, description: 'PUBLIC identifier (potential XXE attack)' },
 
@@ -69,7 +72,9 @@ function validateSvgStructure(svgContent: string): string | null {
       const errorText = parserError.textContent || 'Unknown parse error';
       // Extract the most relevant part of the error
       const errorMatch = errorText.match(/error[^:]*:\s*(.+?)(?:\n|$)/i);
-      return errorMatch ? errorMatch[1].trim() : 'XML parsing error: The SVG contains invalid markup.';
+      return errorMatch
+        ? errorMatch[1].trim()
+        : 'XML parsing error: The SVG contains invalid markup.';
     }
 
     // Verify we got an SVG element
@@ -109,7 +114,8 @@ export function testSvgRenderable(dataUrl: string): Promise<ValidationResult> {
           valid: false,
           error: {
             type: 'invalid-svg',
-            message: 'The SVG rendered with zero dimensions. It may be missing viewBox or width/height attributes.',
+            message:
+              'The SVG rendered with zero dimensions. It may be missing viewBox or width/height attributes.',
           },
         });
       } else {
@@ -137,10 +143,7 @@ export function testSvgRenderable(dataUrl: string): Promise<ValidationResult> {
  * Validate SVG file content
  * Performs security checks, structure validation, and render testing
  */
-export async function validateSvgFile(
-  file: File,
-  dataUrl: string,
-): Promise<ValidationResult> {
+export async function validateSvgFile(file: File, dataUrl: string): Promise<ValidationResult> {
   // Read file content for text-based validation
   const content = await file.text();
 
@@ -275,10 +278,7 @@ export function testPngRenderable(dataUrl: string, fileName: string): Promise<Va
  * Validate PNG file
  * Checks signature and render capability
  */
-export async function validatePngFile(
-  file: File,
-  dataUrl: string,
-): Promise<ValidationResult> {
+export async function validatePngFile(file: File, dataUrl: string): Promise<ValidationResult> {
   // Check 1: PNG signature
   const signatureResult = await validatePngSignature(file);
   if (!signatureResult.valid) {

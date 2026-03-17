@@ -45,7 +45,7 @@ export class JobQueueService {
       this.queue.push(job);
 
       // Set timeout for the job
-      setTimeout(() => {
+      job.timeoutId = setTimeout(() => {
         if (job.status === 'pending' || job.status === 'processing') {
           this.logger.warn(`Job ${jobId} timed out after ${this.jobTimeoutMs}ms`);
           job.status = 'failed';
@@ -69,6 +69,7 @@ export class JobQueueService {
   completeJob(jobId: string, result: ConversionJobResult): void {
     const job = this.processing.get(jobId);
     if (job) {
+      if (job.timeoutId) clearTimeout(job.timeoutId);
       job.status = 'completed';
       job.completedAt = new Date();
       job.result = result;
@@ -83,6 +84,7 @@ export class JobQueueService {
   failJob(jobId: string, error: Error): void {
     const job = this.processing.get(jobId);
     if (job) {
+      if (job.timeoutId) clearTimeout(job.timeoutId);
       job.status = 'failed';
       job.completedAt = new Date();
       this.processing.delete(jobId);

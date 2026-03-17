@@ -11,7 +11,12 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-export type FileErrorType = 'invalid-svg' | 'invalid-png' | 'security-risk' | 'parse-error' | 'unknown';
+export type FileErrorType =
+  | 'invalid-svg'
+  | 'invalid-png'
+  | 'security-risk'
+  | 'parse-error'
+  | 'unknown';
 
 export interface FileValidationError {
   type: FileErrorType;
@@ -82,7 +87,10 @@ export function UploadErrorPage() {
           </div>
           <CardTitle className="text-2xl">{title}</CardTitle>
           {error.fileName && (
-            <p className="mt-1 font-mono text-sm text-muted-foreground truncate" title={error.fileName}>
+            <p
+              className="mt-1 font-mono text-sm text-muted-foreground truncate"
+              title={error.fileName}
+            >
               {error.fileName}
             </p>
           )}
