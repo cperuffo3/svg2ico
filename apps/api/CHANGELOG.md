@@ -1,5 +1,15 @@
 # @starter/api
 
+## 0.6.1
+
+### Patch Changes
+
+- 410d60d: **Backend:**
+  - Fix memory leak caused by transient-scoped logger creating unbounded instances
+  - Fix job queue timeout closures retaining input buffers after job completion
+  - Add connection pool limits and idle timeout to PostgreSQL adapter
+  - Optimize admin stats queries to use DB aggregation instead of loading full tables into memory
+
 ## 0.5.0
 
 ### Minor Changes
