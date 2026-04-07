@@ -1,5 +1,12 @@
 # @starter/web
 
+## 0.6.3
+
+### Patch Changes
+
+- 84a96ab: **DevOps:**
+  - Configure Dependabot to target develop branch instead of master for pull requests
+
 ## 0.6.2
 
 ## 0.6.1
