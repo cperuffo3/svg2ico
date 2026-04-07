@@ -1,5 +1,12 @@
 # @starter/api
 
+## 0.6.2
+
+### Patch Changes
+
+- 27aa85a: **Backend:**
+  - Fix raw SQL query using Prisma model names instead of mapped table/column names in admin overview endpoint
+
 ## 0.6.1
 
 ### Patch Changes
