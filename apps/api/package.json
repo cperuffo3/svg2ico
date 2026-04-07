@@ -34,7 +34,7 @@
     "dotenv": "^17.2.3",
     "helmet": "^8.1.0",
     "isomorphic-dompurify": "^2.35.0",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.0.1",
     "pg": "^8.16.3",
     "png2icons": "^2.0.1",
     "reflect-metadata": "^0.2.2",
