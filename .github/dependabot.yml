@@ -3,6 +3,7 @@ updates:
   # Root package.json
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -16,6 +17,7 @@ updates:
   # API app
   - package-ecosystem: "npm"
     directory: "/apps/api"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -29,6 +31,7 @@ updates:
   # Web app
   - package-ecosystem: "npm"
     directory: "/apps/web"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -42,6 +45,7 @@ updates:
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
