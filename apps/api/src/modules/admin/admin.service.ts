@@ -56,7 +56,7 @@ export class AdminService {
       }),
       this.prisma.$queryRaw<
         [{ count: bigint }]
-      >`SELECT COUNT(DISTINCT "ipHash") as count FROM "ConversionMetric"`,
+      >`SELECT COUNT(DISTINCT "ip_hash") as count FROM "conversion_metrics"`,
     ]);
 
     const successRate =
