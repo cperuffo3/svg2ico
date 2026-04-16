@@ -82,9 +82,7 @@ export class AdminService {
 
   async getUsersStats(): Promise<UsersStats> {
     // Get the first appearance date for each unique IP, grouped by day
-    const newUsersPerDay = await this.prisma.$queryRaw<
-      { date: string; new_users: bigint }[]
-    >`
+    const newUsersPerDay = await this.prisma.$queryRaw<{ date: string; new_users: bigint }[]>`
       SELECT first_seen::date::text as date, COUNT(*) as new_users
       FROM (
         SELECT "ip_hash", MIN("created_at") as first_seen

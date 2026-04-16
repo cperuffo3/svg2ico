@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -35,9 +35,7 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
   }
 
   if (error || !data) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">Failed to load user data</div>
-    );
+    return <div className="text-center py-8 text-muted-foreground">Failed to load user data</div>;
   }
 
   const dataKey = view === 'cumulative' ? 'cumulativeUsers' : 'newUsers';

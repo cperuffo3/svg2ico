@@ -41,8 +41,7 @@ export function useOverviewStats(password: string | null) {
 export function useUsersStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'users', password],
-    queryFn: () =>
-      fetchWithAuth<UsersStats>(`${env.API_URL}/api/v1/admin/stats/users`, password!),
+    queryFn: () => fetchWithAuth<UsersStats>(`${env.API_URL}/api/v1/admin/stats/users`, password!),
     enabled: !!password,
     refetchInterval: 60000,
   });
