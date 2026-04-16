@@ -112,10 +112,10 @@ git push -u origin feat/batch-convert
 
 ## CI Workflows
 
-| Workflow           | Trigger               | Purpose                                           |
-| :----------------- | :-------------------- | :------------------------------------------------ |
-| **PR Changeset**   | PR to `master`        | Validates changeset exists, updates PR title/body |
-| **Release**        | Push to `master`      | Versions packages, creates GitHub Release         |
+| Workflow         | Trigger          | Purpose                                           |
+| :--------------- | :--------------- | :------------------------------------------------ |
+| **PR Changeset** | PR to `master`   | Validates changeset exists, updates PR title/body |
+| **Release**      | Push to `master` | Versions packages, creates GitHub Release         |
 
 ## Configuration
 

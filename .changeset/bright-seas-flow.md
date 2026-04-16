@@ -1,10 +1,11 @@
 ---
-"@svg2ico/web": minor
+'@svg2ico/web': minor
 ---
 
 Improve SEO and CI workflows
 
 **Web SEO:**
+
 - Add reusable `SEOHead` component with per-page meta tags, Open Graph, and canonical URLs
 - Add `StructuredData` component for JSON-LD structured data on the homepage
 - Add sitemap.xml with routes for all pages
@@ -13,6 +14,7 @@ Improve SEO and CI workflows
 - Add React Helmet Async for document head management
 
 **CI/CD:**
+
 - Group Dependabot PRs into production deps, dev deps, major updates, and GitHub Actions
 - Add smoketest workflow (type-check, lint, build) for Dependabot PRs
 - Skip changeset requirement for Dependabot PRs
