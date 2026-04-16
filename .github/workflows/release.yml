@@ -58,14 +58,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "chore: version packages [skip ci]" || echo "No changes to commit"
+          VERSION=$(node -p "require('./apps/api/package.json').version")
+          git commit -m "release: v$VERSION [skip ci]" || echo "No changes to commit"
           git push
+
+      - name: Extract version
+        if: steps.changesets.outputs.has_changesets == 'true'
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/api/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         if: steps.changesets.outputs.has_changesets == 'true'
         run: |
-          # Extract version from api package (root is private and not versioned)
-          VERSION=$(node -p "require('./apps/api/package.json').version")
+          VERSION=${{ steps.version.outputs.version }}
 
           # Check if tag already exists
           if git ls-remote --tags origin | grep -q "refs/tags/v$VERSION"; then
@@ -80,3 +87,8 @@ jobs:
             --target master
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Push to production branch
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: |
+          git push origin HEAD:production
