@@ -1,5 +1,6 @@
 export { CTASection } from './CTASection';
 export { FAQSection } from './FAQSection';
+export { faqs } from './faqData';
 export { FeatureCard } from './FeatureCard';
 export { FeaturesSection } from './FeaturesSection';
 export { FileUploadZone } from './FileUploadZone';
@@ -7,4 +8,5 @@ export { Footer } from './Footer';
 export { Header } from './Header';
 export { HeroSection } from './HeroSection';
 export { HowItWorksSection } from './HowItWorksSection';
+export { steps } from './howItWorksData';
 export { OutputFormatsSection } from './OutputFormatsSection';

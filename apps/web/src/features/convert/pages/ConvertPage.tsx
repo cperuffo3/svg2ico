@@ -1,3 +1,4 @@
+import { SEOHead } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
 import { Footer, Header } from '@/features/home/components';
@@ -428,6 +429,12 @@ export function ConvertPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEOHead
+        title="Convert Your Icon - SVG to ICO & ICNS | svg2ico"
+        description="Upload and convert SVG or PNG files to ICO, ICNS, or favicon format. Free, fast, and private icon converter."
+        path="/convert"
+        noindex
+      />
       <Header />
       <main className="mx-auto flex w-full max-w-365 flex-1 gap-4 px-6 py-6">
         {/* Main card - wider when PNG options are shown */}

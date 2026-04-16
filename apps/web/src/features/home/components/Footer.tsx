@@ -80,6 +80,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="View svg2ico on GitHub"
             >
               <FontAwesomeIcon icon={faGithub} className="text-xl" />
             </a>

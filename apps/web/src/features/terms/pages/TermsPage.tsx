@@ -1,8 +1,29 @@
+import { SEOHead, StructuredData } from '@/components/common';
 import { Footer, Header } from '../../home/components';
+
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://svg2ico.com/' },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Terms of Service',
+      item: 'https://svg2ico.com/terms',
+    },
+  ],
+};
 
 export function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Terms of Service | svg2ico"
+        description="Terms of service for svg2ico, the free SVG to ICO and ICNS converter. No accounts required, files never stored."
+        path="/terms"
+      />
+      <StructuredData data={breadcrumbSchema} />
       <Header />
       <main className="mx-auto max-w-4xl px-6 py-12">
         <h1 className="mb-8 text-4xl font-bold text-foreground">Terms of Service</h1>

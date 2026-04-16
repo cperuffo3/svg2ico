@@ -1,8 +1,29 @@
+import { SEOHead, StructuredData } from '@/components/common';
 import { Footer, Header } from '../../home/components';
+
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://svg2ico.com/' },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Privacy Policy',
+      item: 'https://svg2ico.com/privacy',
+    },
+  ],
+};
 
 export function PrivacyPage() {
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Privacy Policy | svg2ico"
+        description="How svg2ico handles your data. Files processed in-memory only, never stored. No accounts, no tracking, complete privacy."
+        path="/privacy"
+      />
+      <StructuredData data={breadcrumbSchema} />
       <Header />
       <main className="mx-auto max-w-4xl px-6 py-12">
         <h1 className="mb-8 text-4xl font-bold text-foreground">Privacy Policy</h1>
