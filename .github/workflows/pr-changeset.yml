@@ -5,7 +5,6 @@ on:
     types: [opened, synchronize]
     branches:
       - master
-      - develop
 
 permissions:
   contents: read

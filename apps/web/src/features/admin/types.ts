@@ -105,6 +105,17 @@ export interface OptionDistribution {
   percentage: number;
 }
 
+export interface UserTimeSeriesPoint {
+  date: string;
+  newUsers: number;
+  cumulativeUsers: number;
+}
+
+export interface UsersStats {
+  totalUniqueUsers: number;
+  daily: UserTimeSeriesPoint[];
+}
+
 export interface ConfigurationsStats {
   totalWithOptions: number;
   scaleDistribution: OptionDistribution[];
@@ -118,6 +129,7 @@ export interface ConfigurationsStats {
 
 export type AdminTab =
   | 'overview'
+  | 'users'
   | 'conversions'
   | 'formats'
   | 'performance'

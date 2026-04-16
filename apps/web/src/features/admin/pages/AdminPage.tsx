@@ -13,6 +13,7 @@ import {
   FormatsDashboard,
   OverviewDashboard,
   PerformanceDashboard,
+  UsersDashboard,
 } from '../components';
 import { useAdminAuth } from '../hooks';
 import type { AdminTab } from '../types';
@@ -64,6 +65,9 @@ export function AdminPage() {
 
         {activeTab === 'overview' && (
           <OverviewDashboard password={password!} onAuthError={handleAuthError} />
+        )}
+        {activeTab === 'users' && (
+          <UsersDashboard password={password!} onAuthError={handleAuthError} />
         )}
         {activeTab === 'conversions' && (
           <ConversionsDashboard password={password!} onAuthError={handleAuthError} />

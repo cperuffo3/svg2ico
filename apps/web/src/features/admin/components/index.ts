@@ -7,3 +7,4 @@ export * from './FormatsDashboard';
 export * from './OverviewDashboard';
 export * from './PerformanceDashboard';
 export * from './StatCard';
+export * from './UsersDashboard';

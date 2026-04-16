@@ -11,6 +11,8 @@ import {
   PerformanceStats,
   SizeDistribution,
   TimeSeriesPoint,
+  UserTimeSeriesPoint,
+  UsersStats,
 } from './dto/admin-stats.dto.js';
 
 interface ConversionOptionsJson {
@@ -75,6 +77,37 @@ export class AdminService {
         failed: last24HoursFailed,
       },
       uniqueUsers: Number(uniqueUsersResult[0]?.count ?? 0),
+    };
+  }
+
+  async getUsersStats(): Promise<UsersStats> {
+    // Get the first appearance date for each unique IP, grouped by day
+    const newUsersPerDay = await this.prisma.$queryRaw<{ date: string; new_users: bigint }[]>`
+      SELECT first_seen::date::text as date, COUNT(*) as new_users
+      FROM (
+        SELECT "ip_hash", MIN("created_at") as first_seen
+        FROM "conversion_metrics"
+        GROUP BY "ip_hash"
+      ) sub
+      GROUP BY first_seen::date
+      ORDER BY date ASC
+    `;
+
+    // Build cumulative series
+    let cumulative = 0;
+    const daily: UserTimeSeriesPoint[] = newUsersPerDay.map((row) => {
+      const newUsers = Number(row.new_users);
+      cumulative += newUsers;
+      return {
+        date: row.date,
+        newUsers,
+        cumulativeUsers: cumulative,
+      };
+    });
+
+    return {
+      totalUniqueUsers: cumulative,
+      daily,
     };
   }
 

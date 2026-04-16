@@ -6,6 +6,7 @@ import {
   faExclamationTriangle,
   faGauge,
   faTachometerAlt,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { AdminTab } from '../types';
@@ -17,6 +18,7 @@ interface AdminNavProps {
 
 const tabs: { id: AdminTab; label: string; icon: typeof faGauge }[] = [
   { id: 'overview', label: 'Overview', icon: faGauge },
+  { id: 'users', label: 'Users', icon: faUsers },
   { id: 'conversions', label: 'Conversions', icon: faChartLine },
   { id: 'formats', label: 'Formats', icon: faChartPie },
   { id: 'performance', label: 'Performance', icon: faTachometerAlt },
