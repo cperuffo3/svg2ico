@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import {
   ConfigurationsStats,
@@ -11,7 +12,7 @@ import {
   PerformanceStats,
   SizeDistribution,
   TimeSeriesPoint,
-  UserConversionCount,
+  UserConversionsResponse,
   UserTimeSeriesPoint,
   UsersStats,
 } from './dto/admin-stats.dto.js';
@@ -112,7 +113,8 @@ export class AdminService {
     };
   }
 
-  async getUserConversionCounts(): Promise<UserConversionCount[]> {
+  async getUserConversionCounts(): Promise<UserConversionsResponse> {
+    // Get top 50 users by total conversions
     const results = await this.prisma.$queryRaw<
       { ip_hash: string; total: bigint; successful: bigint; failed: bigint }[]
     >`
@@ -127,13 +129,67 @@ export class AdminService {
       LIMIT 50
     `;
 
-    return results.map((row, index) => ({
-      userLabel: `User ${index + 1}`,
-      ipHash: row.ip_hash,
-      total: Number(row.total),
-      successful: Number(row.successful),
-      failed: Number(row.failed),
-    }));
+    if (results.length === 0) {
+      return { users: [], maxDailyCount: 0, totalDays: 0 };
+    }
+
+    // Get global date range
+    const dateRange = await this.prisma.$queryRaw<
+      { min_date: string; max_date: string }[]
+    >`SELECT MIN("created_at"::date)::text as min_date, MAX("created_at"::date)::text as max_date FROM "conversion_metrics"`;
+
+    const minDate = dateRange[0].min_date;
+    const maxDate = dateRange[0].max_date;
+
+    // Calculate total days
+    const startMs = new Date(minDate + 'T00:00:00Z').getTime();
+    const endMs = new Date(maxDate + 'T00:00:00Z').getTime();
+    const totalDays = Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
+
+    // Get daily activity for these users
+    const ipHashes = results.map((r) => r.ip_hash);
+    const dailyActivity = await this.prisma.$queryRaw<
+      { ip_hash: string; date: string; count: bigint }[]
+    >`
+      SELECT "ip_hash", "created_at"::date::text as date, COUNT(*) as count
+      FROM "conversion_metrics"
+      WHERE "ip_hash" IN (${Prisma.join(ipHashes)})
+      GROUP BY "ip_hash", "created_at"::date
+      ORDER BY "ip_hash", date
+    `;
+
+    // Build a map of ip_hash -> date -> count
+    const activityMap = new Map<string, Map<string, number>>();
+    let maxDailyCount = 0;
+    for (const row of dailyActivity) {
+      if (!activityMap.has(row.ip_hash)) {
+        activityMap.set(row.ip_hash, new Map());
+      }
+      const count = Number(row.count);
+      activityMap.get(row.ip_hash)!.set(row.date, count);
+      if (count > maxDailyCount) maxDailyCount = count;
+    }
+
+    // Build arrays aligned to the global date range
+    const users = results.map((row, index) => {
+      const userActivity = activityMap.get(row.ip_hash) ?? new Map<string, number>();
+      const daily: number[] = [];
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(startMs + i * 24 * 60 * 60 * 1000);
+        const dateStr = d.toISOString().split('T')[0];
+        daily.push(userActivity.get(dateStr) ?? 0);
+      }
+      return {
+        userLabel: `User ${index + 1}`,
+        ipHash: row.ip_hash,
+        total: Number(row.total),
+        successful: Number(row.successful),
+        failed: Number(row.failed),
+        dailyActivity: daily,
+      };
+    });
+
+    return { users, maxDailyCount, totalDays };
   }
 
   async getConversionsStats(): Promise<ConversionsStats> {

@@ -117,6 +117,13 @@ export interface UserConversionCount {
   total: number;
   successful: number;
   failed: number;
+  dailyActivity: number[];
+}
+
+export interface UserConversionsResponse {
+  users: UserConversionCount[];
+  maxDailyCount: number;
+  totalDays: number;
 }
 
 export interface UsersStats {
