@@ -9,7 +9,7 @@ import {
   FormatsStats,
   OverviewStats,
   PerformanceStats,
-  UserConversionCount,
+  UserConversionsResponse,
   UsersStats,
 } from './dto/admin-stats.dto.js';
 
@@ -57,7 +57,7 @@ export class AdminController {
   })
   @ApiResponse({ status: 200, description: 'Per-user conversion counts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserConversionCounts(): Promise<UserConversionCount[]> {
+  async getUserConversionCounts(): Promise<UserConversionsResponse> {
     this.logger.log('Fetching user conversion counts');
     return this.adminService.getUserConversionCounts();
   }

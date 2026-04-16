@@ -7,7 +7,7 @@ import type {
   FormatsStats,
   OverviewStats,
   PerformanceStats,
-  UserConversionCount,
+  UserConversionsResponse,
   UsersStats,
 } from '../types';
 
@@ -52,7 +52,7 @@ export function useUserConversionCounts(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'users', 'conversions', password],
     queryFn: () =>
-      fetchWithAuth<UserConversionCount[]>(
+      fetchWithAuth<UserConversionsResponse>(
         `${env.API_URL}/api/v1/admin/stats/users/conversions`,
         password!,
       ),

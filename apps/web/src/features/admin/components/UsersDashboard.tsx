@@ -3,10 +3,7 @@ import { useState } from 'react';
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -158,51 +155,82 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      {conversionsByUser && conversionsByUser.length > 0 && (
+      {conversionsByUser && conversionsByUser.users.length > 0 && (
         <>
           <h3 className="text-lg font-semibold">Conversions by User</h3>
-          <div className="bg-card border rounded-lg p-6">
-            <ResponsiveContainer width="100%" height={Math.max(300, conversionsByUser.length * 32)}>
-              <BarChart data={conversionsByUser} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-muted"
-                  strokeOpacity={0.5}
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  className="text-xs"
-                  tick={{ fill: 'currentColor', fontSize: 11 }}
-                  axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="userLabel"
-                  className="text-xs"
-                  tick={{ fill: 'currentColor', fontSize: 11 }}
-                  axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-                  tickLine={false}
-                  width={60}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                  }}
-                  labelFormatter={(label) => label}
-                />
-                <Legend />
-                <Bar dataKey="successful" stackId="a" fill="hsl(142, 76%, 36%)" name="Successful" />
-                <Bar dataKey="failed" stackId="a" fill="hsl(0, 84%, 60%)" name="Failed" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-card border rounded-lg p-4">
+            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-4 gap-y-1 items-center text-xs text-muted-foreground mb-2 px-2">
+              <span>User</span>
+              <span>Activity</span>
+              <span className="text-right">Total</span>
+              <span className="text-right">Failed</span>
+            </div>
+            <div className="space-y-0.5">
+              {conversionsByUser.users.map((user) => (
+                <div
+                  key={user.ipHash}
+                  className="grid grid-cols-[auto_1fr_auto_auto] gap-x-4 items-center px-2 py-1 rounded hover:bg-muted/50"
+                >
+                  <span className="text-sm font-medium w-16">{user.userLabel}</span>
+                  <Sparkline
+                    data={user.dailyActivity}
+                    maxValue={conversionsByUser.maxDailyCount}
+                    width={200}
+                    height={24}
+                  />
+                  <span className="text-sm tabular-nums text-right w-12">
+                    {user.total.toLocaleString()}
+                  </span>
+                  <span
+                    className={`text-sm tabular-nums text-right w-12 ${user.failed > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+                  >
+                    {user.failed > 0 ? user.failed.toLocaleString() : '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
     </div>
+  );
+}
+
+function Sparkline({
+  data,
+  maxValue,
+  width,
+  height,
+}: {
+  data: number[];
+  maxValue: number;
+  width: number;
+  height: number;
+}) {
+  if (data.length === 0 || maxValue === 0) return <div style={{ width, height }} />;
+
+  const padding = 1;
+  const innerHeight = height - padding * 2;
+  const stepX = data.length > 1 ? width / (data.length - 1) : width;
+
+  const points = data.map((v, i) => {
+    const x = data.length > 1 ? i * stepX : width / 2;
+    const y = padding + innerHeight - (v / maxValue) * innerHeight;
+    return `${x},${y}`;
+  });
+
+  const pathD = `M${points.join('L')}`;
+  const fillD = `${pathD}L${width},${height}L0,${height}Z`;
+
+  return (
+    <svg width={width} height={height} className="block">
+      <path d={fillD} fill="hsl(142, 76%, 36%)" fillOpacity={0.15} />
+      <polyline
+        points={points.join(' ')}
+        fill="none"
+        stroke="hsl(142, 76%, 36%)"
+        strokeWidth={1.5}
+      />
+    </svg>
   );
 }
