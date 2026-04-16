@@ -9,6 +9,7 @@ import {
   FormatsStats,
   OverviewStats,
   PerformanceStats,
+  UsersStats,
 } from './dto/admin-stats.dto.js';
 
 @ApiTags('Admin')
@@ -34,6 +35,18 @@ export class AdminController {
   async getOverviewStats(): Promise<OverviewStats> {
     this.logger.log('Fetching overview stats');
     return this.adminService.getOverviewStats();
+  }
+
+  @Get('stats/users')
+  @ApiOperation({
+    summary: 'Get user growth statistics',
+    description: 'Returns daily new and cumulative unique user counts over the lifetime of the app',
+  })
+  @ApiResponse({ status: 200, description: 'User growth time series data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUsersStats(): Promise<UsersStats> {
+    this.logger.log('Fetching users stats');
+    return this.adminService.getUsersStats();
   }
 
   @Get('stats/conversions')

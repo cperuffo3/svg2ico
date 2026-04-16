@@ -47,9 +47,17 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
       const date = new Date(timestamp);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    const date = new Date(timestamp);
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    // Daily view: only label on Mondays
+    const date = new Date(timestamp + (timestamp.includes('T') ? '' : 'T00:00:00'));
+    const day = date.getDay();
+    if (day === 1) {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+    return '';
   };
+
+  const successColor = 'hsl(142, 76%, 36%)';
+  const failColor = 'hsl(0, 84%, 60%)';
 
   return (
     <div className="space-y-4">
@@ -76,19 +84,38 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
       <div className="bg-card border rounded-lg p-6">
         <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <defs>
+              <linearGradient id="gradientSuccess" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={successColor} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={successColor} stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="gradientFailed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={failColor} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={failColor} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" strokeOpacity={0.5} />
             <XAxis
               dataKey="timestamp"
               tickFormatter={formatXAxis}
+              interval={view === 'daily' ? 0 : undefined}
               className="text-xs"
-              tick={{ fill: 'currentColor' }}
+              tick={{ fill: 'currentColor', fontSize: 11 }}
+              tickLine={{ stroke: 'currentColor', strokeOpacity: 0.3 }}
+              axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
             />
-            <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+            <YAxis
+              className="text-xs"
+              tick={{ fill: 'currentColor', fontSize: 11 }}
+              axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
+              tickLine={false}
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
                 borderRadius: '8px',
+                fontSize: '13px',
               }}
               labelFormatter={(label) => {
                 const date = new Date(label);
@@ -100,18 +127,18 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
               type="monotone"
               dataKey="successful"
               stackId="1"
-              stroke="hsl(142, 76%, 36%)"
-              fill="hsl(142, 76%, 36%)"
-              fillOpacity={0.6}
+              stroke={successColor}
+              strokeWidth={2}
+              fill="url(#gradientSuccess)"
               name="Successful"
             />
             <Area
               type="monotone"
               dataKey="failed"
               stackId="1"
-              stroke="hsl(0, 84%, 60%)"
-              fill="hsl(0, 84%, 60%)"
-              fillOpacity={0.6}
+              stroke={failColor}
+              strokeWidth={2}
+              fill="url(#gradientFailed)"
               name="Failed"
             />
           </AreaChart>

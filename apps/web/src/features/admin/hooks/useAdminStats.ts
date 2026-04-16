@@ -7,6 +7,7 @@ import type {
   FormatsStats,
   OverviewStats,
   PerformanceStats,
+  UsersStats,
 } from '../types';
 
 async function fetchWithAuth<T>(url: string, password: string): Promise<T> {
@@ -34,6 +35,16 @@ export function useOverviewStats(password: string | null) {
       fetchWithAuth<OverviewStats>(`${env.API_URL}/api/v1/admin/stats/overview`, password!),
     enabled: !!password,
     refetchInterval: 30000,
+  });
+}
+
+export function useUsersStats(password: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'users', password],
+    queryFn: () =>
+      fetchWithAuth<UsersStats>(`${env.API_URL}/api/v1/admin/stats/users`, password!),
+    enabled: !!password,
+    refetchInterval: 60000,
   });
 }
 
