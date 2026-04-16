@@ -1,5 +1,17 @@
 # @starter/api
 
+## 0.8.0
+
+### Minor Changes
+
+- 1481cad: **Backend:**
+  - Add user growth statistics endpoint returning daily new and cumulative unique users over app lifetime
+
+  **Frontend:**
+  - Add Users tab to admin dashboard with cumulative and new-per-day growth chart
+  - Improve Conversions chart x-axis to show a tick every day with labels only on Mondays
+  - Update all area charts to use gradient-under-the-line minimalist aesthetic
+
 ## 0.7.0
 
 ## 0.6.3
