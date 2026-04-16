@@ -7,6 +7,7 @@ import type {
   FormatsStats,
   OverviewStats,
   PerformanceStats,
+  UserConversionCount,
   UsersStats,
 } from '../types';
 
@@ -42,6 +43,19 @@ export function useUsersStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'users', password],
     queryFn: () => fetchWithAuth<UsersStats>(`${env.API_URL}/api/v1/admin/stats/users`, password!),
+    enabled: !!password,
+    refetchInterval: 60000,
+  });
+}
+
+export function useUserConversionCounts(password: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'users', 'conversions', password],
+    queryFn: () =>
+      fetchWithAuth<UserConversionCount[]>(
+        `${env.API_URL}/api/v1/admin/stats/users/conversions`,
+        password!,
+      ),
     enabled: !!password,
     refetchInterval: 60000,
   });

@@ -11,6 +11,7 @@ import {
   PerformanceStats,
   SizeDistribution,
   TimeSeriesPoint,
+  UserConversionCount,
   UserTimeSeriesPoint,
   UsersStats,
 } from './dto/admin-stats.dto.js';
@@ -109,6 +110,30 @@ export class AdminService {
       totalUniqueUsers: cumulative,
       daily,
     };
+  }
+
+  async getUserConversionCounts(): Promise<UserConversionCount[]> {
+    const results = await this.prisma.$queryRaw<
+      { ip_hash: string; total: bigint; successful: bigint; failed: bigint }[]
+    >`
+      SELECT
+        "ip_hash",
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE success = true) as successful,
+        COUNT(*) FILTER (WHERE success = false) as failed
+      FROM "conversion_metrics"
+      GROUP BY "ip_hash"
+      ORDER BY total DESC
+      LIMIT 50
+    `;
+
+    return results.map((row, index) => ({
+      userLabel: `User ${index + 1}`,
+      ipHash: row.ip_hash,
+      total: Number(row.total),
+      successful: Number(row.successful),
+      failed: Number(row.failed),
+    }));
   }
 
   async getConversionsStats(): Promise<ConversionsStats> {
