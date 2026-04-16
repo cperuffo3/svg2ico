@@ -125,21 +125,21 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
             <Legend />
             <Area
               type="monotone"
-              dataKey="successful"
-              stackId="1"
-              stroke={successColor}
-              strokeWidth={2}
-              fill="url(#gradientSuccess)"
-              name="Successful"
-            />
-            <Area
-              type="monotone"
               dataKey="failed"
               stackId="1"
               stroke={failColor}
               strokeWidth={2}
               fill="url(#gradientFailed)"
               name="Failed"
+            />
+            <Area
+              type="monotone"
+              dataKey="successful"
+              stackId="1"
+              stroke={successColor}
+              strokeWidth={2}
+              fill="url(#gradientSuccess)"
+              name="Successful"
             />
           </AreaChart>
         </ResponsiveContainer>

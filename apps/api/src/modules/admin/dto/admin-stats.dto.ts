@@ -111,6 +111,14 @@ export interface UserTimeSeriesPoint {
   cumulativeUsers: number;
 }
 
+export interface UserConversionCount {
+  userLabel: string;
+  ipHash: string;
+  total: number;
+  successful: number;
+  failed: number;
+}
+
 export interface UsersStats {
   totalUniqueUsers: number;
   daily: UserTimeSeriesPoint[];

@@ -3,13 +3,16 @@ import { useState } from 'react';
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { useUsersStats } from '../hooks';
+import { useUserConversionCounts, useUsersStats } from '../hooks';
 import { StatCard } from './StatCard';
 
 interface UsersDashboardProps {
@@ -20,6 +23,7 @@ interface UsersDashboardProps {
 export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
   const [view, setView] = useState<'cumulative' | 'new'>('cumulative');
   const { data, isLoading, error } = useUsersStats(password);
+  const { data: conversionsByUser } = useUserConversionCounts(password);
 
   if (error?.message === 'UNAUTHORIZED') {
     onAuthError();
@@ -154,6 +158,51 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {conversionsByUser && conversionsByUser.length > 0 && (
+        <>
+          <h3 className="text-lg font-semibold">Conversions by User</h3>
+          <div className="bg-card border rounded-lg p-6">
+            <ResponsiveContainer width="100%" height={Math.max(300, conversionsByUser.length * 32)}>
+              <BarChart data={conversionsByUser} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-muted"
+                  strokeOpacity={0.5}
+                  horizontal={false}
+                />
+                <XAxis
+                  type="number"
+                  className="text-xs"
+                  tick={{ fill: 'currentColor', fontSize: 11 }}
+                  axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="userLabel"
+                  className="text-xs"
+                  tick={{ fill: 'currentColor', fontSize: 11 }}
+                  axisLine={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
+                  tickLine={false}
+                  width={60}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                  }}
+                  labelFormatter={(label) => label}
+                />
+                <Legend />
+                <Bar dataKey="successful" stackId="a" fill="hsl(142, 76%, 36%)" name="Successful" />
+                <Bar dataKey="failed" stackId="a" fill="hsl(0, 84%, 60%)" name="Failed" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 }
