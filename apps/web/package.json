@@ -33,7 +33,7 @@
     "cmdk": "^1.1.1",
     "color": "^5.0.3",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^1.8.0",
     "next-themes": "^0.4.6",
     "onnxruntime-web": "1.21.0-dev.20250206-d981b153d3",
     "radix-ui": "^1.4.3",
@@ -49,19 +49,19 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
-    "eslint": "^9.17.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.2.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^17.0.0",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "typescript-eslint": "^8.18.1",
-    "vite": "^7.3.0"
+    "vite": "^8.0.8"
   }
 }
