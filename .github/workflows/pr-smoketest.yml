@@ -9,8 +9,7 @@ on:
 
 jobs:
   smoketest:
-    name: PR Validation
-    if: github.actor == 'dependabot[bot]'
+    name: Smoketest
     runs-on: ubuntu-latest
 
     steps:

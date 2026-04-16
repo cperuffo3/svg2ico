@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   update-pr:
-    name: PR Validation
+    name: Changeset
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
