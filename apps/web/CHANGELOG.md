@@ -1,5 +1,16 @@
 # @starter/web
 
+## 0.9.0
+
+### Minor Changes
+
+- d144bd9: **Backend:**
+  - Add per-user conversion counts endpoint (`GET /admin/stats/users/conversions`)
+
+  **Frontend:**
+  - Fix conversions graph to render successful (green) area in front of failed (red) area
+  - Add "Conversions by User" stacked bar chart to Users admin tab
+
 ## 0.8.0
 
 ### Minor Changes
