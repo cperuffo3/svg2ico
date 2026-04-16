@@ -66,7 +66,8 @@
       "Bash(powershell -Command \"Invoke-WebRequest -Uri ''http://localhost:5173/'' -UseBasicParsing | Select-Object -ExpandProperty Headers | Format-Table -AutoSize\")",
       "Bash(powershell -Command:*)",
       "Bash(node -p:*)",
-      "Bash(npx changeset:*)"
+      "Bash(npx changeset:*)",
+      "Bash(node:*)"
     ],
     "deny": [
       "Bash(git add:*)",
