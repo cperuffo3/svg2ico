@@ -6,7 +6,7 @@ export function HeroSection() {
       </h1>
       <p className="max-w-2xl text-center text-lg leading-7 text-muted-foreground">
         Fast, privacy-focused icon converter. Your files are processed in-memory only. Zero Storage,
-        Complete Privacy. Guarunteed.
+        Complete Privacy. Guaranteed.
       </p>
     </section>
   );

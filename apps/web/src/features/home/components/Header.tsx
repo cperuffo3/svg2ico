@@ -10,7 +10,7 @@ export function Header() {
           <img src="/logo/logo.svg" alt="svg2ico logo" className="h-10 w-10" />
           <span className="text-2xl font-bold text-foreground">svg2ico</span>
         </a>
-        <nav className="absolute left-1/2 -translate-x-1/2">
+        <nav aria-label="Main navigation" className="absolute left-1/2 -translate-x-1/2">
           <a href="#features" className="sr-only">
             Features
           </a>
@@ -37,6 +37,7 @@ export function Header() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="View svg2ico on GitHub"
           >
             <FontAwesomeIcon icon={faGithub} className="text-xl" />
           </a>
