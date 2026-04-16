@@ -11,6 +11,8 @@ jobs:
   smoketest:
     name: Smoketest
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
 
     steps:
       - name: Checkout
@@ -30,8 +32,6 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
-        env:
-          DATABASE_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
 
       - name: Type check
         run: pnpm type-check
