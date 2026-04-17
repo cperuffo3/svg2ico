@@ -6,7 +6,9 @@ onlyBuiltDependencies:
   - '@nestjs/core'
   - '@prisma/engines'
   - '@scarf/scarf'
+  - core-js
   - esbuild
   - prisma
+  - protobufjs
   - sharp
   - vue-demi

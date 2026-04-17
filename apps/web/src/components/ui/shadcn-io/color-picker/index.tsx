@@ -81,7 +81,9 @@ export const ColorPicker = ({
 
   // Store onChange in a ref to avoid triggering effects when callback changes
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
   // Track if we're updating from external value to avoid feedback loop
   const isExternalUpdate = useRef(false);
