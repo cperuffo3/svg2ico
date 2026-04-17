@@ -108,41 +108,40 @@ export function ConvertPage() {
   const debouncedScale = useDebouncedValue(options.scale, 150);
   const debouncedCornerRadius = useDebouncedValue(options.cornerRadius, 150);
 
-  // Clamp PNG options when source PNG has constraints
-  useEffect(() => {
-    if (!uploadedFile || uploadedFile.type !== 'png') return;
+  // Clamp PNG options when uploaded file changes (derive during render, not in an effect)
+  const [prevUploadedFile, setPrevUploadedFile] = useState(uploadedFile);
+  if (uploadedFile !== prevUploadedFile) {
+    setPrevUploadedFile(uploadedFile);
+    if (uploadedFile?.type === 'png') {
+      const { pngMetadata, dimensions } = uploadedFile;
+      if (pngMetadata || dimensions) {
+        setOptions((prev) => {
+          const newPngOptions = { ...prev.pngOptions };
+          let changed = false;
 
-    const { pngMetadata, dimensions } = uploadedFile;
-    if (!pngMetadata && !dimensions) return;
+          if (dimensions) {
+            const maxSize = Math.min(dimensions.width, dimensions.height);
+            if (newPngOptions.size > maxSize) {
+              newPngOptions.size = maxSize;
+              changed = true;
+            }
+          }
 
-    setOptions((prev) => {
-      const newPngOptions = { ...prev.pngOptions };
-      let changed = false;
+          if (pngMetadata?.dpi && newPngOptions.dpi > pngMetadata.dpi) {
+            newPngOptions.dpi = pngMetadata.dpi;
+            changed = true;
+          }
 
-      // Clamp size to source dimensions
-      if (dimensions) {
-        const maxSize = Math.min(dimensions.width, dimensions.height);
-        if (newPngOptions.size > maxSize) {
-          newPngOptions.size = maxSize;
-          changed = true;
-        }
+          if (pngMetadata && newPngOptions.colorDepth > pngMetadata.colorDepth) {
+            newPngOptions.colorDepth = pngMetadata.colorDepth;
+            changed = true;
+          }
+
+          return changed ? { ...prev, pngOptions: newPngOptions } : prev;
+        });
       }
-
-      // Clamp DPI to source DPI (if available)
-      if (pngMetadata?.dpi && newPngOptions.dpi > pngMetadata.dpi) {
-        newPngOptions.dpi = pngMetadata.dpi;
-        changed = true;
-      }
-
-      // Clamp color depth to source color depth
-      if (pngMetadata && newPngOptions.colorDepth > pngMetadata.colorDepth) {
-        newPngOptions.colorDepth = pngMetadata.colorDepth;
-        changed = true;
-      }
-
-      return changed ? { ...prev, pngOptions: newPngOptions } : prev;
-    });
-  }, [uploadedFile]);
+    }
+  }
 
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
