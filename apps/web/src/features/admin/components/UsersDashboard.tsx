@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -10,6 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useUserConversionCounts, useUsersStats } from '../hooks';
+import { computeWeeklyMonthTicks } from '../lib/chart-ticks';
 import { StatCard } from './StatCard';
 
 interface UsersDashboardProps {
@@ -21,6 +22,11 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
   const [view, setView] = useState<'cumulative' | 'new'>('cumulative');
   const { data, isLoading, error } = useUsersStats(password);
   const { data: conversionsByUser } = useUserConversionCounts(password);
+
+  const { ticks, labeled } = useMemo(
+    () => computeWeeklyMonthTicks(data?.daily.map((d) => d.date) ?? []),
+    [data?.daily],
+  );
 
   if (error?.message === 'UNAUTHORIZED') {
     onAuthError();
@@ -44,12 +50,9 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
   const strokeColor = view === 'cumulative' ? 'hsl(221, 83%, 53%)' : 'hsl(262, 83%, 58%)';
 
   const formatXAxis = (date: string) => {
+    if (!labeled.has(date)) return '';
     const d = new Date(date + 'T00:00:00');
-    const day = d.getDay();
-    if (day === 1) {
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-    return '';
+    return d.toLocaleDateString([], { month: 'short', year: 'numeric' });
   };
 
   const lastDay = data.daily.length > 0 ? data.daily[data.daily.length - 1] : null;
@@ -115,7 +118,7 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
             <XAxis
               dataKey="date"
               tickFormatter={formatXAxis}
-              interval={0}
+              ticks={ticks}
               className="text-xs"
               tick={{ fill: 'currentColor', fontSize: 11 }}
               tickLine={{ stroke: 'currentColor', strokeOpacity: 0.3 }}
@@ -158,42 +161,55 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
       {conversionsByUser && conversionsByUser.users.length > 0 && (
         <>
           <h3 className="text-lg font-semibold">Conversions by User</h3>
-          <div className="bg-card border rounded-lg p-4">
-            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-4 gap-y-1 items-center text-xs text-muted-foreground mb-2 px-2">
-              <span>User</span>
-              <span>Activity</span>
-              <span className="text-right">Total</span>
-              <span className="text-right">Failed</span>
-            </div>
-            <div className="space-y-0.5">
-              {conversionsByUser.users.map((user) => (
-                <div
-                  key={user.ipHash}
-                  className="grid grid-cols-[auto_1fr_auto_auto] gap-x-4 items-center px-2 py-1 rounded hover:bg-muted/50"
-                >
-                  <span className="text-sm font-medium w-16">{user.userLabel}</span>
-                  <Sparkline
-                    data={user.dailyActivity}
-                    maxValue={conversionsByUser.maxDailyCount}
-                    width={200}
-                    height={24}
-                  />
-                  <span className="text-sm tabular-nums text-right w-12">
-                    {user.total.toLocaleString()}
-                  </span>
-                  <span
-                    className={`text-sm tabular-nums text-right w-12 ${user.failed > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
-                  >
-                    {user.failed > 0 ? user.failed.toLocaleString() : '-'}
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {splitIntoColumns(conversionsByUser.users, 2).map((group, idx) => (
+              <div key={idx} className="bg-card border rounded-lg p-4">
+                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-3 gap-y-1 items-center text-xs text-muted-foreground mb-2 px-2">
+                  <span>User</span>
+                  <span>Activity</span>
+                  <span className="text-right">Total</span>
+                  <span className="text-right">Failed</span>
                 </div>
-              ))}
-            </div>
+                <div className="space-y-0.5">
+                  {group.map((user) => (
+                    <div
+                      key={user.ipHash}
+                      className="grid grid-cols-[auto_1fr_auto_auto] gap-x-3 items-center px-2 py-1 rounded hover:bg-muted/50"
+                    >
+                      <span className="text-sm font-medium w-16">{user.userLabel}</span>
+                      <Sparkline
+                        data={user.dailyActivity}
+                        maxValue={conversionsByUser.maxDailyCount}
+                        width={140}
+                        height={24}
+                      />
+                      <span className="text-sm tabular-nums text-right w-12">
+                        {user.total.toLocaleString()}
+                      </span>
+                      <span
+                        className={`text-sm tabular-nums text-right w-12 ${user.failed > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+                      >
+                        {user.failed > 0 ? user.failed.toLocaleString() : '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
     </div>
   );
+}
+
+function splitIntoColumns<T>(items: T[], columns: number): T[][] {
+  const perColumn = Math.ceil(items.length / columns);
+  const result: T[][] = [];
+  for (let i = 0; i < columns; i++) {
+    result.push(items.slice(i * perColumn, (i + 1) * perColumn));
+  }
+  return result;
 }
 
 function Sparkline({

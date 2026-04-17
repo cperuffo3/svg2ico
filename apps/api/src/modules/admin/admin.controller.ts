@@ -53,7 +53,8 @@ export class AdminController {
   @Get('stats/users/conversions')
   @ApiOperation({
     summary: 'Get per-user conversion counts',
-    description: 'Returns conversion counts grouped by user (top 50 by total conversions)',
+    description:
+      'Returns conversion counts grouped by user, sorted by total conversions descending',
   })
   @ApiResponse({ status: 200, description: 'Per-user conversion counts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

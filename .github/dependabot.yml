@@ -9,17 +9,11 @@ updates:
       day: "monday"
     open-pull-requests-limit: 10
     groups:
-      production-dependencies:
-        dependency-type: "production"
+      minor-and-patch:
         update-types:
           - "minor"
           - "patch"
-      development-dependencies:
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-      major-updates:
+      major:
         update-types:
           - "major"
 

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useConversionsStats } from '../hooks';
+import { computeHourlyTicks, computeWeeklyMonthTicks } from '../lib/chart-ticks';
 
 interface ConversionsDashboardProps {
   password: string;
@@ -20,6 +21,15 @@ interface ConversionsDashboardProps {
 export function ConversionsDashboard({ password, onAuthError }: ConversionsDashboardProps) {
   const [view, setView] = useState<'hourly' | 'daily'>('hourly');
   const { data, isLoading, error } = useConversionsStats(password);
+
+  const hourlyTickInfo = useMemo(
+    () => computeHourlyTicks(data?.hourly.map((d) => d.timestamp) ?? []),
+    [data?.hourly],
+  );
+  const dailyTickInfo = useMemo(
+    () => computeWeeklyMonthTicks(data?.daily.map((d) => d.timestamp) ?? []),
+    [data?.daily],
+  );
 
   if (error?.message === 'UNAUTHORIZED') {
     onAuthError();
@@ -41,19 +51,19 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
   }
 
   const chartData = view === 'hourly' ? data.hourly : data.daily;
+  const { ticks, labeled } =
+    view === 'hourly'
+      ? { ticks: hourlyTickInfo.ticks, labeled: hourlyTickInfo.labeled }
+      : { ticks: dailyTickInfo.ticks, labeled: dailyTickInfo.labeled };
 
   const formatXAxis = (timestamp: string) => {
+    if (!labeled.has(timestamp)) return '';
     if (view === 'hourly') {
       const date = new Date(timestamp);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    // Daily view: only label on Mondays
-    const date = new Date(timestamp + (timestamp.includes('T') ? '' : 'T00:00:00'));
-    const day = date.getDay();
-    if (day === 1) {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-    return '';
+    const date = new Date(timestamp + 'T00:00:00');
+    return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
   };
 
   const successColor = 'hsl(142, 76%, 36%)';
@@ -76,7 +86,7 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
             size="sm"
             onClick={() => setView('daily')}
           >
-            Last 30 Days
+            All Time
           </Button>
         </div>
       </div>
@@ -98,7 +108,7 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
             <XAxis
               dataKey="timestamp"
               tickFormatter={formatXAxis}
-              interval={view === 'daily' ? 0 : undefined}
+              ticks={ticks}
               className="text-xs"
               tick={{ fill: 'currentColor', fontSize: 11 }}
               tickLine={{ stroke: 'currentColor', strokeOpacity: 0.3 }}
@@ -118,8 +128,14 @@ export function ConversionsDashboard({ password, onAuthError }: ConversionsDashb
                 fontSize: '13px',
               }}
               labelFormatter={(label) => {
-                const date = new Date(label);
-                return view === 'hourly' ? date.toLocaleString() : date.toLocaleDateString();
+                if (view === 'hourly') return new Date(label).toLocaleString();
+                const date = new Date(label + 'T00:00:00');
+                return date.toLocaleDateString([], {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                });
               }}
             />
             <Legend />

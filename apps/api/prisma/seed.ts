@@ -67,41 +67,13 @@ const ERROR_MESSAGES = [
   'Invalid image dimensions',
 ];
 
-const SAMPLE_USERS = [
-  { email: 'admin@example.com', name: 'Admin User' },
-  { email: 'john.doe@example.com', name: 'John Doe' },
-  { email: 'jane.smith@example.com', name: 'Jane Smith' },
-  { email: 'developer@test.com', name: 'Test Developer' },
-  { email: 'designer@company.io', name: 'UI Designer' },
-];
-
 async function clearDatabase() {
   console.log('🗑️  Clearing database...');
 
-  // Delete in order to respect foreign key constraints (if any)
   await prisma.conversionMetric.deleteMany();
   await prisma.rateLimit.deleteMany();
-  await prisma.user.deleteMany();
 
   console.log('✅ Database cleared');
-}
-
-async function seedUsers() {
-  console.log('👤 Seeding users...');
-
-  const users = await Promise.all(
-    SAMPLE_USERS.map((user) =>
-      prisma.user.create({
-        data: {
-          email: user.email,
-          name: user.name,
-        },
-      }),
-    ),
-  );
-
-  console.log(`✅ Created ${users.length} users`);
-  return users;
 }
 
 async function seedConversionMetrics(count: number = 500) {
@@ -212,8 +184,7 @@ async function seedRateLimits() {
 async function printStats() {
   console.log('\n📈 Database Statistics:');
 
-  const [userCount, metricCount, rateLimitCount] = await Promise.all([
-    prisma.user.count(),
+  const [metricCount, rateLimitCount] = await Promise.all([
     prisma.conversionMetric.count(),
     prisma.rateLimit.count(),
   ]);
@@ -227,7 +198,6 @@ async function printStats() {
     _count: { outputFormat: true },
   });
 
-  console.log(`   Users: ${userCount}`);
   console.log(`   Conversion Metrics: ${metricCount}`);
   console.log(`   - Success Rate: ${((successCount / metricCount) * 100).toFixed(1)}%`);
   console.log(`   - By Output Format:`);
@@ -242,7 +212,6 @@ async function main() {
 
   try {
     await clearDatabase();
-    await seedUsers();
     await seedConversionMetrics(500);
     await seedRateLimits();
     await printStats();
