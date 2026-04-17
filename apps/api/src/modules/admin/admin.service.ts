@@ -95,26 +95,49 @@ export class AdminService {
       ORDER BY date ASC
     `;
 
-    // Build cumulative series
+    if (newUsersPerDay.length === 0) {
+      return { totalUniqueUsers: 0, daily: [] };
+    }
+
+    const newUsersMap = new Map<string, number>();
+    for (const row of newUsersPerDay) {
+      newUsersMap.set(row.date, Number(row.new_users));
+    }
+
+    // Build continuous daily series from first recorded day through today
+    const daily = this.buildFullDateRange(newUsersPerDay[0].date, (date) => {
+      const newUsers = newUsersMap.get(date) ?? 0;
+      return { date, newUsers };
+    });
+
     let cumulative = 0;
-    const daily: UserTimeSeriesPoint[] = newUsersPerDay.map((row) => {
-      const newUsers = Number(row.new_users);
-      cumulative += newUsers;
-      return {
-        date: row.date,
-        newUsers,
-        cumulativeUsers: cumulative,
-      };
+    const dailyWithCumulative: UserTimeSeriesPoint[] = daily.map((d) => {
+      cumulative += d.newUsers;
+      return { ...d, cumulativeUsers: cumulative };
     });
 
     return {
       totalUniqueUsers: cumulative,
-      daily,
+      daily: dailyWithCumulative,
     };
   }
 
+  private buildFullDateRange<T>(startDate: string, build: (date: string) => T): T[] {
+    const startMs = new Date(startDate + 'T00:00:00Z').getTime();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const endMs = new Date(todayStr + 'T00:00:00Z').getTime();
+    const days = Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
+    const result: T[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startMs + i * 24 * 60 * 60 * 1000);
+      const dateStr = d.toISOString().split('T')[0];
+      result.push(build(dateStr));
+    }
+    return result;
+  }
+
   async getUserConversionCounts(): Promise<UserConversionsResponse> {
-    // Get top 50 users by total conversions
+    // Get all users, sorted by total conversions descending
     const results = await this.prisma.$queryRaw<
       { ip_hash: string; total: bigint; successful: bigint; failed: bigint }[]
     >`
@@ -126,7 +149,6 @@ export class AdminService {
       FROM "conversion_metrics"
       GROUP BY "ip_hash"
       ORDER BY total DESC
-      LIMIT 50
     `;
 
     if (results.length === 0) {
@@ -195,20 +217,22 @@ export class AdminService {
   async getConversionsStats(): Promise<ConversionsStats> {
     const now = new Date();
     const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Get all conversions for the time periods
-    const [hourlyData, dailyData] = await Promise.all([
+    const [hourlyData, dailyCountsRaw] = await Promise.all([
       this.prisma.conversionMetric.findMany({
         where: { createdAt: { gte: last24Hours } },
         select: { createdAt: true, success: true },
         orderBy: { createdAt: 'asc' },
       }),
-      this.prisma.conversionMetric.findMany({
-        where: { createdAt: { gte: last30Days } },
-        select: { createdAt: true, success: true },
-        orderBy: { createdAt: 'asc' },
-      }),
+      this.prisma.$queryRaw<{ date: string; total: bigint; successful: bigint; failed: bigint }[]>`
+        SELECT "created_at"::date::text as date,
+               COUNT(*) as total,
+               COUNT(*) FILTER (WHERE success = true) as successful,
+               COUNT(*) FILTER (WHERE success = false) as failed
+        FROM "conversion_metrics"
+        GROUP BY "created_at"::date
+        ORDER BY date ASC
+      `,
     ]);
 
     // Aggregate hourly data
@@ -235,37 +259,34 @@ export class AdminService {
       }
     }
 
-    // Aggregate daily data
-    const dailyMap = new Map<string, TimeSeriesPoint>();
-    for (let i = 29; i >= 0; i--) {
-      const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      day.setHours(0, 0, 0, 0);
-      const key = day.toISOString().split('T')[0];
-      dailyMap.set(key, {
-        timestamp: key,
-        total: 0,
-        successful: 0,
-        failed: 0,
+    // Build continuous daily series from first recorded day through today
+    const dailyCountsMap = new Map<string, TimeSeriesPoint>();
+    for (const row of dailyCountsRaw) {
+      dailyCountsMap.set(row.date, {
+        timestamp: row.date,
+        total: Number(row.total),
+        successful: Number(row.successful),
+        failed: Number(row.failed),
       });
     }
 
-    for (const record of dailyData) {
-      const day = new Date(record.createdAt);
-      const key = day.toISOString().split('T')[0];
-      const point = dailyMap.get(key);
-      if (point) {
-        point.total++;
-        if (record.success) {
-          point.successful++;
-        } else {
-          point.failed++;
-        }
-      }
-    }
+    const daily =
+      dailyCountsRaw.length === 0
+        ? []
+        : this.buildFullDateRange(
+            dailyCountsRaw[0].date,
+            (date): TimeSeriesPoint =>
+              dailyCountsMap.get(date) ?? {
+                timestamp: date,
+                total: 0,
+                successful: 0,
+                failed: 0,
+              },
+          );
 
     return {
       hourly: Array.from(hourlyMap.values()),
-      daily: Array.from(dailyMap.values()),
+      daily,
     };
   }
 
