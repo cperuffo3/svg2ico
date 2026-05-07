@@ -113,7 +113,7 @@ export interface UserTimeSeriesPoint {
 
 export interface UserConversionCount {
   userLabel: string;
-  ipHash: string;
+  clientIdHash: string;
   total: number;
   successful: number;
   failed: number;

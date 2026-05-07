@@ -8,5 +8,6 @@ onlyBuiltDependencies:
   - '@scarf/scarf'
   - esbuild
   - prisma
+  - protobufjs
   - sharp
   - vue-demi
