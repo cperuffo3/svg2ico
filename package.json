@@ -37,5 +37,14 @@
     "rimraf": "^6.1.2",
     "turbo": "^2.7.2",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
   }
 }
