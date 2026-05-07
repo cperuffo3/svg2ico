@@ -60,7 +60,7 @@ export class AdminService {
       }),
       this.prisma.$queryRaw<
         [{ count: bigint }]
-      >`SELECT COUNT(DISTINCT "ip_hash") as count FROM "conversion_metrics"`,
+      >`SELECT COUNT(DISTINCT "client_id_hash") as count FROM "conversion_metrics" WHERE "client_id_hash" IS NOT NULL`,
     ]);
 
     const successRate =
@@ -83,13 +83,14 @@ export class AdminService {
   }
 
   async getUsersStats(): Promise<UsersStats> {
-    // Get the first appearance date for each unique IP, grouped by day
+    // Get the first appearance date for each unique client cookie, grouped by day
     const newUsersPerDay = await this.prisma.$queryRaw<{ date: string; new_users: bigint }[]>`
       SELECT first_seen::date::text as date, COUNT(*) as new_users
       FROM (
-        SELECT "ip_hash", MIN("created_at") as first_seen
+        SELECT "client_id_hash", MIN("created_at") as first_seen
         FROM "conversion_metrics"
-        GROUP BY "ip_hash"
+        WHERE "client_id_hash" IS NOT NULL
+        GROUP BY "client_id_hash"
       ) sub
       GROUP BY first_seen::date
       ORDER BY date ASC
@@ -137,17 +138,18 @@ export class AdminService {
   }
 
   async getUserConversionCounts(): Promise<UserConversionsResponse> {
-    // Get all users, sorted by total conversions descending
+    // Get all users (cookie-identified), sorted by total conversions descending
     const results = await this.prisma.$queryRaw<
-      { ip_hash: string; total: bigint; successful: bigint; failed: bigint }[]
+      { client_id_hash: string; total: bigint; successful: bigint; failed: bigint }[]
     >`
       SELECT
-        "ip_hash",
+        "client_id_hash",
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE success = true) as successful,
         COUNT(*) FILTER (WHERE success = false) as failed
       FROM "conversion_metrics"
-      GROUP BY "ip_hash"
+      WHERE "client_id_hash" IS NOT NULL
+      GROUP BY "client_id_hash"
       ORDER BY total DESC
     `;
 
@@ -155,10 +157,10 @@ export class AdminService {
       return { users: [], maxDailyCount: 0, totalDays: 0 };
     }
 
-    // Get global date range
+    // Date range across rows that have a client_id_hash (post-cookie-rollout)
     const dateRange = await this.prisma.$queryRaw<
       { min_date: string; max_date: string }[]
-    >`SELECT MIN("created_at"::date)::text as min_date, MAX("created_at"::date)::text as max_date FROM "conversion_metrics"`;
+    >`SELECT MIN("created_at"::date)::text as min_date, MAX("created_at"::date)::text as max_date FROM "conversion_metrics" WHERE "client_id_hash" IS NOT NULL`;
 
     const minDate = dateRange[0].min_date;
     const maxDate = dateRange[0].max_date;
@@ -169,32 +171,32 @@ export class AdminService {
     const totalDays = Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
 
     // Get daily activity for these users
-    const ipHashes = results.map((r) => r.ip_hash);
+    const clientIdHashes = results.map((r) => r.client_id_hash);
     const dailyActivity = await this.prisma.$queryRaw<
-      { ip_hash: string; date: string; count: bigint }[]
+      { client_id_hash: string; date: string; count: bigint }[]
     >`
-      SELECT "ip_hash", "created_at"::date::text as date, COUNT(*) as count
+      SELECT "client_id_hash", "created_at"::date::text as date, COUNT(*) as count
       FROM "conversion_metrics"
-      WHERE "ip_hash" IN (${Prisma.join(ipHashes)})
-      GROUP BY "ip_hash", "created_at"::date
-      ORDER BY "ip_hash", date
+      WHERE "client_id_hash" IN (${Prisma.join(clientIdHashes)})
+      GROUP BY "client_id_hash", "created_at"::date
+      ORDER BY "client_id_hash", date
     `;
 
-    // Build a map of ip_hash -> date -> count
+    // Build a map of client_id_hash -> date -> count
     const activityMap = new Map<string, Map<string, number>>();
     let maxDailyCount = 0;
     for (const row of dailyActivity) {
-      if (!activityMap.has(row.ip_hash)) {
-        activityMap.set(row.ip_hash, new Map());
+      if (!activityMap.has(row.client_id_hash)) {
+        activityMap.set(row.client_id_hash, new Map());
       }
       const count = Number(row.count);
-      activityMap.get(row.ip_hash)!.set(row.date, count);
+      activityMap.get(row.client_id_hash)!.set(row.date, count);
       if (count > maxDailyCount) maxDailyCount = count;
     }
 
     // Build arrays aligned to the global date range
     const users = results.map((row, index) => {
-      const userActivity = activityMap.get(row.ip_hash) ?? new Map<string, number>();
+      const userActivity = activityMap.get(row.client_id_hash) ?? new Map<string, number>();
       const daily: number[] = [];
       for (let i = 0; i < totalDays; i++) {
         const d = new Date(startMs + i * 24 * 60 * 60 * 1000);
@@ -203,7 +205,7 @@ export class AdminService {
       }
       return {
         userLabel: `User ${index + 1}`,
-        ipHash: row.ip_hash,
+        clientIdHash: row.client_id_hash,
         total: Number(row.total),
         successful: Number(row.successful),
         failed: Number(row.failed),

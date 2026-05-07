@@ -2,9 +2,9 @@
   "name": "svg2ico",
   "version": "0.6.0",
   "private": true,
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "pnpm@11.0.8",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "turbo dev",

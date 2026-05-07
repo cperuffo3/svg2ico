@@ -2,11 +2,12 @@ packages:
   - apps/*
   - packages/*
 
-onlyBuiltDependencies:
-  - '@nestjs/core'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - esbuild
-  - prisma
-  - sharp
-  - vue-demi
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  esbuild: true
+  prisma: true
+  protobufjs: false
+  sharp: true
+  vue-demi: false

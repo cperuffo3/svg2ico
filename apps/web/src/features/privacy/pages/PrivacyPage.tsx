@@ -28,7 +28,7 @@ export function PrivacyPage() {
       <main className="mx-auto max-w-4xl px-6 py-12">
         <h1 className="mb-8 text-4xl font-bold text-foreground">Privacy Policy</h1>
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6 text-muted-foreground">
-          <p className="text-sm text-muted-foreground">Last updated: January 2026</p>
+          <p className="text-sm text-muted-foreground">Last updated: May 2026</p>
 
           <section className="space-y-3">
             <h2 className="text-2xl font-semibold text-foreground">Overview</h2>
@@ -54,6 +54,12 @@ export function PrivacyPage() {
             <p>We collect limited, anonymized data to improve the service:</p>
             <ul className="list-disc space-y-1 pl-6">
               <li>
+                <strong>Anonymous client ID</strong> - A randomly generated UUID stored in an
+                HttpOnly cookie (<code>svg2ico_cid</code>) so we can count unique users without
+                tracking who you are. Only a truncated SHA256 hash of the UUID is stored on our
+                server.
+              </li>
+              <li>
                 <strong>Hashed IP address</strong> - A truncated SHA256 hash of your IP (not the
                 actual IP) for rate limiting
               </li>
@@ -69,11 +75,39 @@ export function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
+            <h2 className="text-2xl font-semibold text-foreground">Cookies</h2>
+            <p>We set a single first-party cookie for anonymous usage measurement:</p>
+            <ul className="list-disc space-y-1 pl-6">
+              <li>
+                <strong>Name:</strong> <code>svg2ico_cid</code>
+              </li>
+              <li>
+                <strong>Purpose:</strong> Distinguish unique visitors so we can report accurate
+                usage statistics. The cookie does not contain any personal information &mdash; only
+                a randomly generated UUID.
+              </li>
+              <li>
+                <strong>Lifetime:</strong> Up to one year. The cookie is host-only, HttpOnly, and
+                set with <code>SameSite=Lax</code>; it is sent over HTTPS in production.
+              </li>
+              <li>
+                <strong>Sharing:</strong> The cookie value is never shared with third parties. We
+                store only a one-way hash of it server-side.
+              </li>
+              <li>
+                <strong>Opting out:</strong> You can clear or block this cookie in your browser at
+                any time. Doing so does not affect your ability to use the converter.
+              </li>
+            </ul>
+            <p>We do not use any third-party analytics, advertising, or tracking cookies.</p>
+          </section>
+
+          <section className="space-y-3">
             <h2 className="text-2xl font-semibold text-foreground">What We Don't Collect</h2>
             <ul className="list-disc space-y-1 pl-6">
               <li>Your actual files or their contents</li>
               <li>Personal information (no accounts required)</li>
-              <li>Cookies for tracking purposes</li>
+              <li>Cross-site or third-party tracking cookies</li>
               <li>Third-party analytics or advertising trackers</li>
             </ul>
           </section>
@@ -94,6 +128,9 @@ export function PrivacyPage() {
               </li>
               <li>
                 <strong>Rate limit data</strong>: Expires automatically within minutes
+              </li>
+              <li>
+                <strong>Anonymous client ID cookie</strong>: Up to one year, or until you clear it
               </li>
               <li>
                 <strong>Usage metrics</strong>: Retained for service analytics

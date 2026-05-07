@@ -13,10 +13,11 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import archiver from 'archiver';
 import { Request, Response } from 'express';
+import { getClientId } from '../../common/client-id/index.js';
 import { MetricsService } from '../metrics/metrics.service.js';
+import { CfThrottlerGuard } from '../rate-limit/index.js';
 import { ConversionService, type ConversionOptions } from './conversion.service.js';
 import {
   ConvertOptionsDto,
@@ -31,7 +32,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 @ApiTags('Conversion')
 @Controller('convert')
-@UseGuards(ThrottlerGuard)
+@UseGuards(CfThrottlerGuard)
 export class ConversionController {
   constructor(
     private readonly conversionService: ConversionService,
@@ -156,7 +157,8 @@ export class ConversionController {
     @Res() res: Response,
   ): Promise<void> {
     const startTime = Date.now();
-    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    // Populated by ClientIdMiddleware; the middleware always sets it.
+    const clientId = getClientId(req) ?? 'unknown';
 
     // Parse and validate options
     const format = this.parseFormat(options.format);
@@ -208,7 +210,7 @@ export class ConversionController {
       const inputFormat = file.originalname.toLowerCase().endsWith('.png') ? 'png' : 'svg';
       this.metricsService
         .logConversion({
-          ipAddress,
+          clientId,
           inputFormat,
           outputFormat: format,
           inputSizeBytes: file.size,

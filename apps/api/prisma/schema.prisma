@@ -9,7 +9,7 @@ datasource db {
 
 model ConversionMetric {
   id                String   @id @default(cuid())
-  ipHash            String   @map("ip_hash")
+  clientIdHash      String?  @map("client_id_hash")
   inputFormat       String   @map("input_format")
   outputFormat      String   @map("output_format")
   inputSizeBytes    Int      @map("input_size_bytes")
@@ -20,7 +20,7 @@ model ConversionMetric {
   conversionOptions Json?    @map("conversion_options")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  @@index([ipHash])
+  @@index([clientIdHash])
   @@index([createdAt])
   @@map("conversion_metrics")
 }

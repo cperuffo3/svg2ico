@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClientIdMiddleware } from './common/client-id/index.js';
 import { LoggingModule } from './common/logging/index.js';
 import { PrismaModule } from './common/prisma/index.js';
 import { AdminModule } from './modules/admin/index.js';
@@ -25,4 +26,8 @@ import { WorkerPoolModule } from './modules/workers/index.js';
     AdminModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(ClientIdMiddleware).forRoutes('*');
+  }
+}
