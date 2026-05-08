@@ -94,7 +94,7 @@ export class AdminService {
         WHERE "client_id_hash" IS NOT NULL
         GROUP BY "client_id_hash"
       ) sub
-      GROUP BY (first_seen AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+      GROUP BY 1
       ORDER BY date ASC
     `;
 
@@ -186,7 +186,7 @@ export class AdminService {
              COUNT(*) as count
       FROM "conversion_metrics"
       WHERE "client_id_hash" IN (${Prisma.join(clientIdHashes)})
-      GROUP BY "client_id_hash", (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+      GROUP BY "client_id_hash", 2
       ORDER BY "client_id_hash", date
     `;
 
@@ -241,7 +241,7 @@ export class AdminService {
                COUNT(*) FILTER (WHERE success = true) as successful,
                COUNT(*) FILTER (WHERE success = false) as failed
         FROM "conversion_metrics"
-        GROUP BY (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+        GROUP BY 1
         ORDER BY date ASC
       `,
     ]);
