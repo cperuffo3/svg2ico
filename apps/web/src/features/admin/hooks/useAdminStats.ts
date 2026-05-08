@@ -29,6 +29,20 @@ async function fetchWithAuth<T>(url: string, password: string): Promise<T> {
   return response.json();
 }
 
+function getUserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+function withTz(url: string): string {
+  const tz = getUserTimezone();
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}tz=${encodeURIComponent(tz)}`;
+}
+
 export function useOverviewStats(password: string | null) {
   return useQuery({
     queryKey: ['admin', 'overview', password],
@@ -40,20 +54,23 @@ export function useOverviewStats(password: string | null) {
 }
 
 export function useUsersStats(password: string | null) {
+  const tz = getUserTimezone();
   return useQuery({
-    queryKey: ['admin', 'users', password],
-    queryFn: () => fetchWithAuth<UsersStats>(`${env.API_URL}/api/v1/admin/stats/users`, password!),
+    queryKey: ['admin', 'users', password, tz],
+    queryFn: () =>
+      fetchWithAuth<UsersStats>(withTz(`${env.API_URL}/api/v1/admin/stats/users`), password!),
     enabled: !!password,
     refetchInterval: 60000,
   });
 }
 
 export function useUserConversionCounts(password: string | null) {
+  const tz = getUserTimezone();
   return useQuery({
-    queryKey: ['admin', 'users', 'conversions', password],
+    queryKey: ['admin', 'users', 'conversions', password, tz],
     queryFn: () =>
       fetchWithAuth<UserConversionsResponse>(
-        `${env.API_URL}/api/v1/admin/stats/users/conversions`,
+        withTz(`${env.API_URL}/api/v1/admin/stats/users/conversions`),
         password!,
       ),
     enabled: !!password,
@@ -62,10 +79,14 @@ export function useUserConversionCounts(password: string | null) {
 }
 
 export function useConversionsStats(password: string | null) {
+  const tz = getUserTimezone();
   return useQuery({
-    queryKey: ['admin', 'conversions', password],
+    queryKey: ['admin', 'conversions', password, tz],
     queryFn: () =>
-      fetchWithAuth<ConversionsStats>(`${env.API_URL}/api/v1/admin/stats/conversions`, password!),
+      fetchWithAuth<ConversionsStats>(
+        withTz(`${env.API_URL}/api/v1/admin/stats/conversions`),
+        password!,
+      ),
     enabled: !!password,
     refetchInterval: 30000,
   });

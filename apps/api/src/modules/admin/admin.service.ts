@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
+import { todayInTimezone, validateTimezone } from './admin.tz.js';
 import {
   ConfigurationsStats,
   ConversionsStats,
@@ -82,17 +83,18 @@ export class AdminService {
     };
   }
 
-  async getUsersStats(): Promise<UsersStats> {
-    // Get the first appearance date for each unique client cookie, grouped by day
+  async getUsersStats(timezone?: string): Promise<UsersStats> {
+    const tz = validateTimezone(timezone);
+    // Get the first appearance date for each unique client cookie, grouped by day in the user's timezone
     const newUsersPerDay = await this.prisma.$queryRaw<{ date: string; new_users: bigint }[]>`
-      SELECT first_seen::date::text as date, COUNT(*) as new_users
+      SELECT (first_seen AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date::text as date, COUNT(*) as new_users
       FROM (
         SELECT "client_id_hash", MIN("created_at") as first_seen
         FROM "conversion_metrics"
         WHERE "client_id_hash" IS NOT NULL
         GROUP BY "client_id_hash"
       ) sub
-      GROUP BY first_seen::date
+      GROUP BY (first_seen AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
       ORDER BY date ASC
     `;
 
@@ -105,8 +107,8 @@ export class AdminService {
       newUsersMap.set(row.date, Number(row.new_users));
     }
 
-    // Build continuous daily series from first recorded day through today
-    const daily = this.buildFullDateRange(newUsersPerDay[0].date, (date) => {
+    // Build continuous daily series from first recorded day through today (in user tz)
+    const daily = this.buildFullDateRange(newUsersPerDay[0].date, tz, (date) => {
       const newUsers = newUsersMap.get(date) ?? 0;
       return { date, newUsers };
     });
@@ -123,9 +125,9 @@ export class AdminService {
     };
   }
 
-  private buildFullDateRange<T>(startDate: string, build: (date: string) => T): T[] {
+  private buildFullDateRange<T>(startDate: string, tz: string, build: (date: string) => T): T[] {
     const startMs = new Date(startDate + 'T00:00:00Z').getTime();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = todayInTimezone(tz);
     const endMs = new Date(todayStr + 'T00:00:00Z').getTime();
     const days = Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
     const result: T[] = [];
@@ -137,7 +139,8 @@ export class AdminService {
     return result;
   }
 
-  async getUserConversionCounts(): Promise<UserConversionsResponse> {
+  async getUserConversionCounts(timezone?: string): Promise<UserConversionsResponse> {
+    const tz = validateTimezone(timezone);
     // Get all users (cookie-identified), sorted by total conversions descending
     const results = await this.prisma.$queryRaw<
       { client_id_hash: string; total: bigint; successful: bigint; failed: bigint }[]
@@ -157,10 +160,13 @@ export class AdminService {
       return { users: [], maxDailyCount: 0, totalDays: 0 };
     }
 
-    // Date range across rows that have a client_id_hash (post-cookie-rollout)
-    const dateRange = await this.prisma.$queryRaw<
-      { min_date: string; max_date: string }[]
-    >`SELECT MIN("created_at"::date)::text as min_date, MAX("created_at"::date)::text as max_date FROM "conversion_metrics" WHERE "client_id_hash" IS NOT NULL`;
+    // Date range across rows that have a client_id_hash (post-cookie-rollout), in user's timezone
+    const dateRange = await this.prisma.$queryRaw<{ min_date: string; max_date: string }[]>`
+      SELECT MIN((created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date)::text as min_date,
+             MAX((created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date)::text as max_date
+      FROM "conversion_metrics"
+      WHERE "client_id_hash" IS NOT NULL
+    `;
 
     const minDate = dateRange[0].min_date;
     const maxDate = dateRange[0].max_date;
@@ -170,15 +176,17 @@ export class AdminService {
     const endMs = new Date(maxDate + 'T00:00:00Z').getTime();
     const totalDays = Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
 
-    // Get daily activity for these users
+    // Get daily activity for these users, bucketed in the user's timezone
     const clientIdHashes = results.map((r) => r.client_id_hash);
     const dailyActivity = await this.prisma.$queryRaw<
       { client_id_hash: string; date: string; count: bigint }[]
     >`
-      SELECT "client_id_hash", "created_at"::date::text as date, COUNT(*) as count
+      SELECT "client_id_hash",
+             (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date::text as date,
+             COUNT(*) as count
       FROM "conversion_metrics"
       WHERE "client_id_hash" IN (${Prisma.join(clientIdHashes)})
-      GROUP BY "client_id_hash", "created_at"::date
+      GROUP BY "client_id_hash", (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
       ORDER BY "client_id_hash", date
     `;
 
@@ -216,7 +224,8 @@ export class AdminService {
     return { users, maxDailyCount, totalDays };
   }
 
-  async getConversionsStats(): Promise<ConversionsStats> {
+  async getConversionsStats(timezone?: string): Promise<ConversionsStats> {
+    const tz = validateTimezone(timezone);
     const now = new Date();
     const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -227,12 +236,12 @@ export class AdminService {
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.$queryRaw<{ date: string; total: bigint; successful: bigint; failed: bigint }[]>`
-        SELECT "created_at"::date::text as date,
+        SELECT (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date::text as date,
                COUNT(*) as total,
                COUNT(*) FILTER (WHERE success = true) as successful,
                COUNT(*) FILTER (WHERE success = false) as failed
         FROM "conversion_metrics"
-        GROUP BY "created_at"::date
+        GROUP BY (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
         ORDER BY date ASC
       `,
     ]);
@@ -277,6 +286,7 @@ export class AdminService {
         ? []
         : this.buildFullDateRange(
             dailyCountsRaw[0].date,
+            tz,
             (date): TimeSeriesPoint =>
               dailyCountsMap.get(date) ?? {
                 timestamp: date,
