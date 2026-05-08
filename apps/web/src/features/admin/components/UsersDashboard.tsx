@@ -173,7 +173,7 @@ export function UsersDashboard({ password, onAuthError }: UsersDashboardProps) {
                 <div className="space-y-0.5">
                   {group.map((user) => (
                     <div
-                      key={user.ipHash}
+                      key={user.clientIdHash}
                       className="grid grid-cols-[auto_1fr_auto_auto] gap-x-3 items-center px-2 py-1 rounded hover:bg-muted/50"
                     >
                       <span className="text-sm font-medium w-16">{user.userLabel}</span>

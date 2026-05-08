@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule, PrismaService } from '../../common/index.js';
+import { CfThrottlerGuard } from './cf-throttler.guard.js';
 import { PrismaThrottlerStorage } from './prisma-throttler.storage.js';
 
 @Module({
@@ -21,7 +22,7 @@ import { PrismaThrottlerStorage } from './prisma-throttler.storage.js';
       inject: [PrismaService],
     }),
   ],
-  providers: [PrismaThrottlerStorage],
-  exports: [ThrottlerModule, PrismaThrottlerStorage],
+  providers: [PrismaThrottlerStorage, CfThrottlerGuard],
+  exports: [ThrottlerModule, PrismaThrottlerStorage, CfThrottlerGuard],
 })
 export class RateLimitModule {}

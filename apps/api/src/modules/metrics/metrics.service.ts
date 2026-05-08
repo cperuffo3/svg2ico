@@ -18,7 +18,7 @@ export interface ConversionOptions {
 }
 
 export interface ConversionMetricData {
-  ipAddress: string;
+  clientId: string;
   inputFormat: string;
   outputFormat: string;
   inputSizeBytes: number;
@@ -50,11 +50,11 @@ export class MetricsService {
 
   async logConversion(data: ConversionMetricData): Promise<void> {
     try {
-      const ipHash = this.hashIp(data.ipAddress);
+      const clientIdHash = this.hashClientId(data.clientId);
 
       await this.prisma.conversionMetric.create({
         data: {
-          ipHash,
+          clientIdHash,
           inputFormat: data.inputFormat,
           outputFormat: data.outputFormat,
           inputSizeBytes: data.inputSizeBytes,
@@ -126,7 +126,7 @@ export class MetricsService {
     };
   }
 
-  private hashIp(ip: string): string {
-    return createHash('sha256').update(ip).digest('hex').substring(0, 16);
+  private hashClientId(clientId: string): string {
+    return createHash('sha256').update(clientId).digest('hex').substring(0, 16);
   }
 }

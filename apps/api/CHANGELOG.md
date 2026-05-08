@@ -1,5 +1,44 @@
 # @starter/api
 
+## 0.13.0
+
+### Minor Changes
+
+- b6a541b: feat(api, web): Bucket admin daily counts and graphs in the viewer's timezone
+
+  Admin stats endpoints (`/admin/stats/users`, `/admin/stats/users/conversions`,
+  `/admin/stats/conversions`) now accept an optional `tz` query parameter (IANA name,
+  e.g. `America/Los_Angeles`). Daily date bucketing uses
+  `(created_at AT TIME ZONE 'UTC' AT TIME ZONE $tz)::date` and the date-range fill
+  computes "today" in that same zone, so the last bar of every chart and the
+  "New Users Today" tile reflect the viewer's local calendar day instead of the
+  server's UTC day. The web admin hooks send the browser's resolved timezone
+  automatically; missing or invalid values fall back to UTC.
+
+## 0.12.0
+
+### Minor Changes
+
+- 27ff3b2: Switch unique-user analytics from request IP to a cookie-issued anonymous client ID.
+
+  The previous IP-based count was suppressed by Express not trusting the upstream proxy: every visitor through a given CDN/PoP shared the proxy's IP, so the unique-user count plateaued (~58) regardless of real new visitors.
+
+  **Changes**
+  - Prisma migration `switch_to_cookie_client_id` drops `ip_hash` from `conversion_metrics` and adds a nullable `client_id_hash`. Conversion volume, format, performance, and failure history are preserved; the unique-user count restarts from deploy.
+  - New API middleware sets a first-party `svg2ico_cid` cookie (HttpOnly, SameSite=Lax, Secure in production, 1-year max age) containing a random UUID. Only a truncated SHA-256 of the UUID is stored server-side.
+  - `trust proxy` is set to `2` in `main.ts` to reflect the Cloudflare → Railway → app hop chain (used for Secure-cookie detection and `req.protocol`).
+  - Rate limiter switched to a `CfThrottlerGuard` that reads the real client IP from `CF-Connecting-IP` (with `req.ip` fallback for non-CF paths). This also fixes the original rate-limiting flaw where every visitor behind a Cloudflare PoP shared one bucket.
+  - Web frontend sends `credentials: 'include'` on the convert request so the cookie round-trips.
+  - Privacy policy updated to disclose the analytics cookie and its lifetime.
+
+  **Required env on deploy**
+
+  `CORS_ORIGIN=https://svg2ico.com` must be set on the API service in Railway. The browser will refuse to send the cookie if `Access-Control-Allow-Origin` is wrong.
+
+  **Migration note**
+
+  After deploy, the admin Users dashboard will read 0 and grow as cookie-tracked traffic arrives. Historical rows have `client_id_hash = NULL` and are intentionally excluded from unique-user queries.
+
 ## 0.11.0
 
 ### Minor Changes

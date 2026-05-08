@@ -299,6 +299,7 @@ export function ConvertPage() {
       const response = await fetch(`${env.API_URL}/api/v1/convert`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) {

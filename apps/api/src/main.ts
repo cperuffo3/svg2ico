@@ -12,6 +12,11 @@ async function bootstrap() {
     logger, // Use custom logger for all NestJS internal logging
   });
 
+  // Two trusted hops: Cloudflare (proxied DNS) → Railway → app. Required for
+  // Secure cookies and req.protocol detection. The rate limiter does NOT rely
+  // on this — it reads CF-Connecting-IP directly via CfThrottlerGuard.
+  app.getHttpAdapter().getInstance().set('trust proxy', 2);
+
   const port = process.env.PORT || 3000;
   const apiPrefix = 'api/v1';
 
