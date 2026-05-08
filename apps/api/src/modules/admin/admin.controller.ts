@@ -1,5 +1,5 @@
-import { Controller, Delete, Get, Logger, UseGuards } from '@nestjs/common';
-import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Delete, Get, Logger, Query, UseGuards } from '@nestjs/common';
+import { ApiHeader, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AdminGuard } from './admin.guard.js';
 import { AdminService } from './admin.service.js';
 import {
@@ -43,11 +43,16 @@ export class AdminController {
     summary: 'Get user growth statistics',
     description: 'Returns daily new and cumulative unique user counts over the lifetime of the app',
   })
+  @ApiQuery({
+    name: 'tz',
+    required: false,
+    description: 'IANA timezone (e.g. America/Los_Angeles) used to bucket daily counts',
+  })
   @ApiResponse({ status: 200, description: 'User growth time series data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUsersStats(): Promise<UsersStats> {
+  async getUsersStats(@Query('tz') tz?: string): Promise<UsersStats> {
     this.logger.log('Fetching users stats');
-    return this.adminService.getUsersStats();
+    return this.adminService.getUsersStats(tz);
   }
 
   @Get('stats/users/conversions')
@@ -56,11 +61,16 @@ export class AdminController {
     description:
       'Returns conversion counts grouped by user, sorted by total conversions descending',
   })
+  @ApiQuery({
+    name: 'tz',
+    required: false,
+    description: 'IANA timezone used to bucket per-day activity',
+  })
   @ApiResponse({ status: 200, description: 'Per-user conversion counts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserConversionCounts(): Promise<UserConversionsResponse> {
+  async getUserConversionCounts(@Query('tz') tz?: string): Promise<UserConversionsResponse> {
     this.logger.log('Fetching user conversion counts');
-    return this.adminService.getUserConversionCounts();
+    return this.adminService.getUserConversionCounts(tz);
   }
 
   @Get('stats/conversions')
@@ -68,11 +78,16 @@ export class AdminController {
     summary: 'Get conversions time series',
     description: 'Returns hourly and daily conversion counts',
   })
+  @ApiQuery({
+    name: 'tz',
+    required: false,
+    description: 'IANA timezone used to bucket daily counts',
+  })
   @ApiResponse({ status: 200, description: 'Conversions time series data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getConversionsStats(): Promise<ConversionsStats> {
+  async getConversionsStats(@Query('tz') tz?: string): Promise<ConversionsStats> {
     this.logger.log('Fetching conversions stats');
-    return this.adminService.getConversionsStats();
+    return this.adminService.getConversionsStats(tz);
   }
 
   @Get('stats/formats')
