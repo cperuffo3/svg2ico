@@ -508,7 +508,7 @@ async function convertToPng(
       mimeType: 'image/png',
     };
   } catch (error) {
-    throw new Error(extractErrorMessage(error, 'PNG conversion'));
+    throw new Error(extractErrorMessage(error, 'PNG conversion'), { cause: error });
   }
 }
 
@@ -536,7 +536,7 @@ async function convertToIco(
       mimeType: 'image/x-icon',
     };
   } catch (error) {
-    throw new Error(extractErrorMessage(error, 'ICO conversion'));
+    throw new Error(extractErrorMessage(error, 'ICO conversion'), { cause: error });
   }
 }
 
@@ -564,7 +564,7 @@ async function convertToFavicon(
       mimeType: 'image/x-icon',
     };
   } catch (error) {
-    throw new Error(extractErrorMessage(error, 'Favicon conversion'));
+    throw new Error(extractErrorMessage(error, 'Favicon conversion'), { cause: error });
   }
 }
 
@@ -629,7 +629,7 @@ async function convertToIcns(
       mimeType: 'image/icns',
     };
   } catch (error) {
-    throw new Error(extractErrorMessage(error, 'ICNS conversion'));
+    throw new Error(extractErrorMessage(error, 'ICNS conversion'), { cause: error });
   }
 }
 
@@ -841,6 +841,7 @@ async function renderSvgSourceToPngs(
         );
         throw new Error(
           `Failed to render ${size}px image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          { cause: error },
         );
       }
     }),
@@ -973,6 +974,7 @@ async function renderPngSourceToPngs(
         );
         throw new Error(
           `Failed to render ${size}px image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          { cause: error },
         );
       }
     }),
