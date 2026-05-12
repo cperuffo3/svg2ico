@@ -9,10 +9,12 @@ import {
   containsDangerousPatterns,
   createMalformedAnalysis,
   detectExternalReferences,
+  inlineExternalImages,
   isQuickSafe,
   sanitizeSvg,
   ThreatClassification,
   type ExternalReferenceAnalysis,
+  type PatternMatchLocation,
   type ThreatAnalysis,
 } from '../../common/security/index.js';
 import { WorkerPoolService } from '../workers/worker-pool.service.js';
@@ -24,6 +26,34 @@ import type {
   RoundnessValue,
   SourceFileType,
 } from './dto/convert.dto.js';
+
+export type SvgErrorType =
+  | 'invalid_format'
+  | 'security_pre_sanitize'
+  | 'security_post_sanitize'
+  | 'sanitization_failed'
+  | 'external_resource_invalid';
+
+export interface SvgErrorPayload {
+  message: string;
+  errorType: SvgErrorType;
+  classification?: ThreatClassification;
+  matchedPatterns?: string[];
+  patternLocations?: PatternMatchLocation[];
+  /**
+   * Whether the dialog with the SVG editor should be offered to the user.
+   * True for SVG validation/security errors where we have the file contents.
+   */
+  canSubmit: boolean;
+}
+
+function svgError(payload: SvgErrorPayload): BadRequestException {
+  return new BadRequestException({
+    statusCode: 400,
+    error: 'Bad Request',
+    ...payload,
+  });
+}
 
 export interface ConversionResult {
   buffer: Buffer;
@@ -77,18 +107,28 @@ export class ConversionService {
           'File does not start with <svg or <?xml declaration',
         );
         this.logSecurityEvent(originalFilename, analysis);
-        throw new BadRequestException(
-          'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
-        );
+        throw svgError({
+          message:
+            'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+          errorType: 'invalid_format',
+          classification: analysis.classification,
+          canSubmit: true,
+        });
       }
 
       // Analyze for attack patterns before processing
       const threatAnalysis = analyzeThreats(svgString);
       if (threatAnalysis) {
         this.logSecurityEvent(originalFilename, threatAnalysis);
-        throw new BadRequestException(
-          'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
-        );
+        throw svgError({
+          message:
+            'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
+          errorType: 'security_pre_sanitize',
+          classification: threatAnalysis.classification,
+          matchedPatterns: threatAnalysis.matchedPatterns,
+          patternLocations: threatAnalysis.patternLocations,
+          canSubmit: true,
+        });
       }
 
       // Quick security check (backup - should be caught by analyzeThreats)
@@ -98,9 +138,13 @@ export class ConversionService {
           'Failed quick safety check',
         );
         this.logSecurityEvent(originalFilename, analysis);
-        throw new BadRequestException(
-          'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
-        );
+        throw svgError({
+          message:
+            'The uploaded SVG contains potentially dangerous content and has been rejected for security reasons.',
+          errorType: 'security_pre_sanitize',
+          classification: analysis.classification,
+          canSubmit: true,
+        });
       }
 
       // Detect external references (log but don't block)
@@ -110,9 +154,63 @@ export class ConversionService {
         this.logExternalReferenceWarning(originalFilename, externalRefs);
       }
 
+      // Inline external <image href="https://..."> so resvg can actually render
+      // them. Performs SSRF-safe fetches. Any 'rejected' resource (non-image
+      // content-type, blocked host, oversized, etc.) is a hard error — the
+      // file is referencing something that cannot be treated as an image.
+      // Transient 'failed' outcomes (network/HTTP) are soft: original URL is
+      // left in place and resvg will render that one image blank.
+      let workingSvg = svgString;
+      try {
+        const inlineResult = await inlineExternalImages(svgString);
+        if (inlineResult.inlined > 0 || inlineResult.failed > 0) {
+          this.logger.log(
+            `Inlined ${inlineResult.inlined} external resource(s) for ${originalFilename}, ${inlineResult.failed} failed/blocked`,
+          );
+          for (const d of inlineResult.details) {
+            if (d.status !== 'inlined') {
+              this.logger.warn(`  ${d.status} ${d.url}: ${d.reason ?? ''}`);
+            }
+          }
+        }
+        const bad = inlineResult.details.filter((d) => d.status !== 'inlined');
+        if (bad.length > 0) {
+          const matchedPatterns = bad.map((d) => `${d.url} — ${d.reason ?? d.status}`);
+          const patternLocations: PatternMatchLocation[] = bad.map((d) => {
+            const { line, column } = this.offsetToLineColumn(svgString, d.tagStart);
+            return {
+              description: `External resource could not be loaded as an image: ${d.url} (${d.reason ?? d.status})`,
+              line,
+              column,
+              startOffset: d.tagStart,
+              endOffset: d.tagEnd,
+              snippet: svgString.slice(d.tagStart, Math.min(d.tagEnd, d.tagStart + 200)),
+            };
+          });
+          throw svgError({
+            message:
+              bad.length === 1
+                ? 'An external image reference could not be loaded as an image.'
+                : `${bad.length} external image references could not be loaded as images.`,
+            errorType: 'external_resource_invalid',
+            matchedPatterns,
+            patternLocations,
+            canSubmit: true,
+          });
+        }
+        workingSvg = inlineResult.result;
+      } catch (err) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
+        this.logger.warn(
+          `External resource inlining threw for ${originalFilename}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+
       // Full sanitization to remove XSS, XXE, and other threats
       try {
-        const sanitizeResult = sanitizeSvg(svgString);
+        const sanitizeResult = sanitizeSvg(workingSvg);
         if (sanitizeResult.wasModified) {
           this.logger.debug(
             `SVG sanitized for ${originalFilename}: removed ${sanitizeResult.removedElements.join(', ') || 'unsafe content'}`,
@@ -124,17 +222,25 @@ export class ConversionService {
         // Additional check for dangerous patterns after sanitization
         if (containsDangerousPatterns(sanitizeResult.sanitized)) {
           const postAnalysis = analyzeThreats(sanitizeResult.sanitized);
-          this.logSecurityEvent(
-            originalFilename,
+          // Run analysis on the ORIGINAL content so the highlights match what the
+          // user uploaded (sanitization may have re-encoded/reordered content).
+          const originalAnalysis = analyzeThreats(svgString);
+          const analysisForLog =
             postAnalysis ??
-              createMalformedAnalysis(
-                ThreatClassification.INVALID_FORMAT,
-                'Dangerous patterns remain after sanitization',
-              ),
-          );
-          throw new BadRequestException(
-            'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
-          );
+            createMalformedAnalysis(
+              ThreatClassification.INVALID_FORMAT,
+              'Dangerous patterns remain after sanitization',
+            );
+          this.logSecurityEvent(originalFilename, analysisForLog);
+          throw svgError({
+            message:
+              'The uploaded SVG could not be safely processed. Please ensure it does not contain scripts or external references.',
+            errorType: 'security_post_sanitize',
+            classification: analysisForLog.classification,
+            matchedPatterns: originalAnalysis?.matchedPatterns ?? analysisForLog.matchedPatterns,
+            patternLocations: originalAnalysis?.patternLocations,
+            canSubmit: true,
+          });
         }
       } catch (error) {
         if (error instanceof BadRequestException) {
@@ -145,9 +251,13 @@ export class ConversionService {
           `Sanitization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
         this.logSecurityEvent(originalFilename, analysis);
-        throw new BadRequestException(
-          'The uploaded SVG could not be processed due to security validation. Please try a different file.',
-        );
+        throw svgError({
+          message:
+            'The uploaded SVG could not be processed due to security validation. Please try a different file.',
+          errorType: 'sanitization_failed',
+          classification: analysis.classification,
+          canSubmit: true,
+        });
       }
     } else if (sourceType === 'png') {
       if (!this.isValidPng(inputBuffer)) {
@@ -226,6 +336,21 @@ export class ConversionService {
         `An unexpected error occurred during conversion: ${message}`,
       );
     }
+  }
+
+  private offsetToLineColumn(content: string, offset: number): { line: number; column: number } {
+    let line = 1;
+    let column = 1;
+    const end = Math.min(offset, content.length);
+    for (let i = 0; i < end; i++) {
+      if (content[i] === '\n') {
+        line++;
+        column = 1;
+      } else {
+        column++;
+      }
+    }
+    return { line, column };
   }
 
   private detectSourceType(filename: string): SourceFileType {

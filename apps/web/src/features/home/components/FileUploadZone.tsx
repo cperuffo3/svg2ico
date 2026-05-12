@@ -11,6 +11,11 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  inlineSvgForPreview,
+  svgHasExternalImageRefs,
+  svgToDataUrl,
+} from '../utils/inlineSvgPreview';
 
 export function FileUploadZone() {
   const [isDragging, setIsDragging] = useState(false);
@@ -109,12 +114,25 @@ export function FileUploadZone() {
             return;
           }
 
+          // Inline external <image href="https://..."> for the preview so the
+          // browser can render them — only call the backend when such refs are
+          // actually present in the file. The real conversion endpoint does
+          // its own inlining server-side, so the original file is still sent.
+          let previewDataUrl = dataUrl;
+          const svgText = await file.text();
+          if (svgHasExternalImageRefs(svgText)) {
+            const inlined = await inlineSvgForPreview(svgText);
+            if (inlined !== svgText) {
+              previewDataUrl = svgToDataUrl(inlined);
+            }
+          }
+
           // SVG files don't need dimension detection on frontend
           const uploadedFile: UploadedFile = {
             file,
             name: file.name,
             size: file.size,
-            dataUrl,
+            dataUrl: previewDataUrl,
             type: 'svg',
           };
           setIsValidating(false);

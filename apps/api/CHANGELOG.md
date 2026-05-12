@@ -1,5 +1,12 @@
 # @starter/api
 
+## 0.13.1
+
+### Patch Changes
+
+- 69ee6ed: **Backend:**
+  - Fix 500 errors on `/admin/stats/users`, `/admin/stats/users/conversions`, and `/admin/stats/conversions` caused by mismatched parameter placeholders in timezone-aware GROUP BY expressions
+
 ## 0.13.0
 
 ### Minor Changes

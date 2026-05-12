@@ -25,6 +25,28 @@ model ConversionMetric {
   @@map("conversion_metrics")
 }
 
+model ErrorSubmission {
+  id               String   @id @default(cuid())
+  clientIdHash     String?  @map("client_id_hash")
+  originalFilename String   @map("original_filename")
+  fileSizeBytes    Int      @map("file_size_bytes")
+  svgContent       String   @map("svg_content")
+  errorMessage     String   @map("error_message")
+  errorType        String   @map("error_type")
+  classification   String?
+  matchedPatterns  Json?    @map("matched_patterns")
+  patternLocations Json?    @map("pattern_locations")
+  userNotes        String?  @map("user_notes")
+  reviewed         Boolean  @default(false)
+  reviewerNotes    String?  @map("reviewer_notes")
+  reviewedAt       DateTime? @map("reviewed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([reviewed])
+  @@index([createdAt])
+  @@map("error_submissions")
+}
+
 model RateLimit {
   id         String   @id @default(cuid())
   ipHash     String   @unique @map("ip_hash")

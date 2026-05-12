@@ -1,5 +1,21 @@
-import { Controller, Delete, Get, Logger, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ErrorSubmissionDetailDto,
+  ErrorSubmissionSummaryDto,
+  ErrorSubmissionsService,
+  UpdateErrorSubmissionDto,
+} from '../error-submissions/index.js';
 import { AdminGuard } from './admin.guard.js';
 import { AdminService } from './admin.service.js';
 import {
@@ -24,7 +40,10 @@ import {
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly errorSubmissions: ErrorSubmissionsService,
+  ) {}
 
   @Get('stats/overview')
   @ApiOperation({
@@ -149,5 +168,57 @@ export class AdminController {
   async resetFailuresStats(): Promise<{ deletedCount: number }> {
     this.logger.log('Resetting failures stats');
     return this.adminService.resetFailuresStats();
+  }
+
+  @Get('error-submissions')
+  @ApiOperation({
+    summary: 'List user-submitted error files',
+    description: 'Returns SVG files that users opted to submit when conversion failed',
+  })
+  @ApiQuery({ name: 'reviewed', required: false, type: Boolean })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'List of error submissions' })
+  async listErrorSubmissions(
+    @Query('reviewed') reviewed?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<{ items: ErrorSubmissionSummaryDto[]; total: number; unreviewed: number }> {
+    const reviewedFilter =
+      reviewed === undefined || reviewed === '' ? undefined : reviewed === 'true';
+    const [list, stats] = await Promise.all([
+      this.errorSubmissions.list({
+        reviewed: reviewedFilter,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      }),
+      this.errorSubmissions.getStats(),
+    ]);
+    return { ...list, unreviewed: stats.unreviewed };
+  }
+
+  @Get('error-submissions/:id')
+  @ApiOperation({ summary: 'Get a single error submission with the SVG content' })
+  @ApiResponse({ status: 200, description: 'Submission detail' })
+  @ApiResponse({ status: 404, description: 'Submission not found' })
+  async getErrorSubmission(@Param('id') id: string): Promise<ErrorSubmissionDetailDto> {
+    return this.errorSubmissions.getById(id);
+  }
+
+  @Patch('error-submissions/:id')
+  @ApiOperation({ summary: 'Update review status / reviewer notes for a submission' })
+  @ApiResponse({ status: 200, description: 'Updated submission detail' })
+  async updateErrorSubmission(
+    @Param('id') id: string,
+    @Body() body: UpdateErrorSubmissionDto,
+  ): Promise<ErrorSubmissionDetailDto> {
+    return this.errorSubmissions.update(id, body);
+  }
+
+  @Delete('error-submissions/:id')
+  @ApiOperation({ summary: 'Delete a submission' })
+  @ApiResponse({ status: 200, description: 'Deletion confirmation' })
+  async deleteErrorSubmission(@Param('id') id: string): Promise<{ deleted: boolean }> {
+    return this.errorSubmissions.delete(id);
   }
 }

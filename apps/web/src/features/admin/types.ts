@@ -149,4 +149,38 @@ export type AdminTab =
   | 'formats'
   | 'performance'
   | 'failures'
-  | 'configurations';
+  | 'configurations'
+  | 'submissions';
+
+export interface ErrorSubmissionSummary {
+  id: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  errorType: string;
+  classification?: string | null;
+  errorMessage: string;
+  reviewed: boolean;
+  createdAt: string;
+}
+
+export interface ErrorSubmissionDetail extends ErrorSubmissionSummary {
+  svgContent: string;
+  matchedPatterns?: string[] | null;
+  patternLocations?: Array<{
+    description: string;
+    line: number;
+    column: number;
+    startOffset: number;
+    endOffset: number;
+    snippet: string;
+  }> | null;
+  userNotes?: string | null;
+  reviewerNotes?: string | null;
+  reviewedAt?: string | null;
+}
+
+export interface ErrorSubmissionsResponse {
+  items: ErrorSubmissionSummary[];
+  total: number;
+  unreviewed: number;
+}
