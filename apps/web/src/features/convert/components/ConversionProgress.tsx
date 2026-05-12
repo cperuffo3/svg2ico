@@ -36,6 +36,7 @@ interface ConversionProgressProps {
   estimatedTime?: number;
   progress: number;
   errorMessage?: string | null;
+  onViewErrorDetails?: () => void;
 }
 
 function StepIcon({ status }: { status: ConversionStep['status'] }) {
@@ -94,6 +95,7 @@ export function ConversionProgress({
   estimatedTime = 3,
   progress,
   errorMessage,
+  onViewErrorDetails,
 }: ConversionProgressProps) {
   const isSmallHeight = useIsSmallHeight();
 
@@ -161,6 +163,15 @@ export function ConversionProgress({
       {isError && errorMessage && (
         <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
           <p className="wrap-break-word text-sm text-destructive">{errorMessage}</p>
+          {onViewErrorDetails && (
+            <button
+              type="button"
+              onClick={onViewErrorDetails}
+              className="mt-2 text-xs font-medium text-destructive underline-offset-2 hover:underline"
+            >
+              View details and submit file for review
+            </button>
+          )}
         </div>
       )}
 

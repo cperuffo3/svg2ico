@@ -5,6 +5,7 @@ import {
   faCog,
   faExclamationTriangle,
   faGauge,
+  faInbox,
   faTachometerAlt,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -24,6 +25,7 @@ const tabs: { id: AdminTab; label: string; icon: typeof faGauge }[] = [
   { id: 'performance', label: 'Performance', icon: faTachometerAlt },
   { id: 'configurations', label: 'Options', icon: faCog },
   { id: 'failures', label: 'Failures', icon: faExclamationTriangle },
+  { id: 'submissions', label: 'Submissions', icon: faInbox },
 ];
 
 export function AdminNav({ activeTab, onTabChange }: AdminNavProps) {

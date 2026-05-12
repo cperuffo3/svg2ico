@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
@@ -8,7 +9,7 @@ async function bootstrap() {
   // Create custom logger for bootstrap and NestJS internal logging
   const logger = new CustomLoggerService('Bootstrap');
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger, // Use custom logger for all NestJS internal logging
   });
 
@@ -56,6 +57,11 @@ async function bootstrap() {
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     }),
   );
+
+  // Allow larger JSON bodies for the error-submission endpoint (SVG content up to 10MB).
+  // Other endpoints use multipart uploads which have their own limits via multer.
+  app.useBodyParser('json', { limit: '12mb' });
+  app.useBodyParser('urlencoded', { extended: true, limit: '12mb' });
 
   app.setGlobalPrefix(apiPrefix);
 

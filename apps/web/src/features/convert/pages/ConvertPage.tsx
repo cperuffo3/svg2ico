@@ -1,6 +1,7 @@
 import { SEOHead } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
+import { SvgErrorDialog, type SvgErrorDialogData } from '@/features/error-submission';
 import { Footer, Header } from '@/features/home/components';
 import type { FileValidationError } from '@/features/upload-error';
 import { useDebouncedValue } from '@/hooks';
@@ -96,58 +97,46 @@ export function ConvertPage() {
   const location = useLocation();
   const uploadedFile = location.state?.file as UploadedFile | undefined;
 
-  const [options, setOptions] = useState<ConversionOptionsType>({
-    scale: 100,
-    backgroundRemoval: { mode: 'none' },
-    cornerRadius: 0,
-    outputFormat: 'icns',
-    pngOptions: DEFAULT_PNG_OPTIONS,
+  // uploadedFile comes from router state at navigation time and does not change
+  // for the lifetime of this page, so clamping PNG options once during the
+  // lazy useState initializer is sufficient — avoids an effect that would
+  // otherwise call setState during render.
+  const [options, setOptions] = useState<ConversionOptionsType>(() => {
+    const base: ConversionOptionsType = {
+      scale: 100,
+      backgroundRemoval: { mode: 'none' },
+      cornerRadius: 0,
+      outputFormat: 'icns',
+      pngOptions: DEFAULT_PNG_OPTIONS,
+    };
+    if (!uploadedFile || uploadedFile.type !== 'png') return base;
+    const { pngMetadata, dimensions } = uploadedFile;
+    if (!pngMetadata && !dimensions) return base;
+
+    const pngOptions = { ...base.pngOptions };
+    if (dimensions) {
+      const maxSize = Math.min(dimensions.width, dimensions.height);
+      if (pngOptions.size > maxSize) pngOptions.size = maxSize;
+    }
+    if (pngMetadata?.dpi && pngOptions.dpi > pngMetadata.dpi) {
+      pngOptions.dpi = pngMetadata.dpi;
+    }
+    if (pngMetadata && pngOptions.colorDepth > pngMetadata.colorDepth) {
+      pngOptions.colorDepth = pngMetadata.colorDepth;
+    }
+    return { ...base, pngOptions };
   });
 
   // Debounce scale and cornerRadius for the expensive ContextPreviewCard renders
   const debouncedScale = useDebouncedValue(options.scale, 150);
   const debouncedCornerRadius = useDebouncedValue(options.cornerRadius, 150);
 
-  // Clamp PNG options when source PNG has constraints
-  useEffect(() => {
-    if (!uploadedFile || uploadedFile.type !== 'png') return;
-
-    const { pngMetadata, dimensions } = uploadedFile;
-    if (!pngMetadata && !dimensions) return;
-
-    setOptions((prev) => {
-      const newPngOptions = { ...prev.pngOptions };
-      let changed = false;
-
-      // Clamp size to source dimensions
-      if (dimensions) {
-        const maxSize = Math.min(dimensions.width, dimensions.height);
-        if (newPngOptions.size > maxSize) {
-          newPngOptions.size = maxSize;
-          changed = true;
-        }
-      }
-
-      // Clamp DPI to source DPI (if available)
-      if (pngMetadata?.dpi && newPngOptions.dpi > pngMetadata.dpi) {
-        newPngOptions.dpi = pngMetadata.dpi;
-        changed = true;
-      }
-
-      // Clamp color depth to source color depth
-      if (pngMetadata && newPngOptions.colorDepth > pngMetadata.colorDepth) {
-        newPngOptions.colorDepth = pngMetadata.colorDepth;
-        changed = true;
-      }
-
-      return changed ? { ...prev, pngOptions: newPngOptions } : prev;
-    });
-  }, [uploadedFile]);
-
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [svgErrorDialogData, setSvgErrorDialogData] = useState<SvgErrorDialogData | null>(null);
+  const [svgErrorDialogOpen, setSvgErrorDialogOpen] = useState(false);
 
   // PNG background removal state
   const [pngBackgroundRemovalProgress, setPngBackgroundRemovalProgress] =
@@ -307,14 +296,48 @@ export function ConvertPage() {
         const errorText = await response.text();
         // Try to parse JSON error response from NestJS
         let errorMessage = 'Conversion failed';
+        let parsedError: Record<string, unknown> | null = null;
         try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.message) {
-            errorMessage = errorJson.message;
+          parsedError = JSON.parse(errorText);
+          if (parsedError && typeof parsedError.message === 'string') {
+            errorMessage = parsedError.message;
           }
         } catch {
           // If not JSON, use the raw text
           errorMessage = errorText || 'Conversion failed';
+        }
+
+        // If this is an SVG validation error and we still have the source file,
+        // surface the rich dialog with the code editor and submission prompt.
+        const errorType =
+          parsedError && typeof parsedError.errorType === 'string'
+            ? (parsedError.errorType as SvgErrorDialogData['errorType'])
+            : null;
+        if (errorType && uploadedFile.type === 'svg') {
+          try {
+            const svgText = await uploadedFile.file.text();
+            setSvgErrorDialogData({
+              svgContent: svgText,
+              originalFilename: uploadedFile.name,
+              fileSizeBytes: uploadedFile.size,
+              message: errorMessage,
+              errorType,
+              classification:
+                typeof parsedError?.classification === 'string'
+                  ? (parsedError.classification as string)
+                  : undefined,
+              matchedPatterns: Array.isArray(parsedError?.matchedPatterns)
+                ? (parsedError.matchedPatterns as string[])
+                : undefined,
+              patternLocations: Array.isArray(parsedError?.patternLocations)
+                ? (parsedError.patternLocations as SvgErrorDialogData['patternLocations'])
+                : undefined,
+              canSubmit: typeof parsedError?.canSubmit === 'boolean' ? parsedError.canSubmit : true,
+            });
+            setSvgErrorDialogOpen(true);
+          } catch {
+            // If we can't read the file, fall back to the inline error display.
+          }
         }
         throw new Error(errorMessage);
       }
@@ -563,6 +586,9 @@ export function ConvertPage() {
                   progress={progress}
                   estimatedTime={3}
                   errorMessage={errorMessage}
+                  onViewErrorDetails={
+                    svgErrorDialogData ? () => setSvgErrorDialogOpen(true) : undefined
+                  }
                 />
               )}
 
@@ -630,6 +656,11 @@ export function ConvertPage() {
         </div>
       </main>
       <Footer />
+      <SvgErrorDialog
+        open={svgErrorDialogOpen}
+        onOpenChange={setSvgErrorDialogOpen}
+        data={svgErrorDialogData}
+      />
     </div>
   );
 }

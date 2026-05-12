@@ -13,6 +13,7 @@ import {
   FormatsDashboard,
   OverviewDashboard,
   PerformanceDashboard,
+  SubmissionsDashboard,
   UsersDashboard,
 } from '../components';
 import { useAdminAuth } from '../hooks';
@@ -83,6 +84,9 @@ export function AdminPage() {
         )}
         {activeTab === 'failures' && (
           <FailuresDashboard password={password!} onAuthError={handleAuthError} />
+        )}
+        {activeTab === 'submissions' && (
+          <SubmissionsDashboard password={password!} onAuthError={handleAuthError} />
         )}
       </main>
     </div>

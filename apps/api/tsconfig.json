@@ -9,6 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2023",
+    "types": ["node", "express", "multer", "jsdom"],
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./",

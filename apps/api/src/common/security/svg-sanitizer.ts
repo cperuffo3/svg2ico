@@ -33,11 +33,66 @@ export enum ThreatClassification {
   FILE_TOO_LARGE = 'file_too_large',
 }
 
+export interface PatternMatchLocation {
+  description: string;
+  line: number;
+  column: number;
+  startOffset: number;
+  endOffset: number;
+  snippet: string;
+}
+
 export interface ThreatAnalysis {
   classification: ThreatClassification;
   isLikelyAttack: boolean;
   matchedPatterns: string[];
   description: string;
+  patternLocations?: PatternMatchLocation[];
+}
+
+function offsetToLineColumn(content: string, offset: number): { line: number; column: number } {
+  let line = 1;
+  let column = 1;
+  for (let i = 0; i < offset && i < content.length; i++) {
+    if (content[i] === '\n') {
+      line++;
+      column = 1;
+    } else {
+      column++;
+    }
+  }
+  return { line, column };
+}
+
+function findAllPatternMatches(
+  content: string,
+  pattern: RegExp,
+  description: string,
+): PatternMatchLocation[] {
+  const locations: PatternMatchLocation[] = [];
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const globalPattern = new RegExp(pattern.source, flags);
+  let match: RegExpExecArray | null;
+  let safety = 0;
+  while ((match = globalPattern.exec(content)) !== null && safety < 100) {
+    safety++;
+    const startOffset = match.index;
+    const endOffset = startOffset + match[0].length;
+    const { line, column } = offsetToLineColumn(content, startOffset);
+    locations.push({
+      description,
+      line,
+      column,
+      startOffset,
+      endOffset,
+      snippet: match[0].slice(0, 120),
+    });
+    // Avoid zero-width infinite loops
+    if (match.index === globalPattern.lastIndex) {
+      globalPattern.lastIndex++;
+    }
+  }
+  return locations;
 }
 
 /**
@@ -120,11 +175,14 @@ const ATTACK_PATTERNS: Array<{
  */
 export function analyzeThreats(svgContent: string): ThreatAnalysis | null {
   const matchedPatterns: string[] = [];
+  const patternLocations: PatternMatchLocation[] = [];
   let classification: ThreatClassification | null = null;
 
   for (const { pattern, classification: cls, description } of ATTACK_PATTERNS) {
-    if (pattern.test(svgContent)) {
+    const locations = findAllPatternMatches(svgContent, pattern, description);
+    if (locations.length > 0) {
       matchedPatterns.push(description);
+      patternLocations.push(...locations);
       // Use the first (most severe) classification found
       if (!classification) {
         classification = cls;
@@ -138,6 +196,7 @@ export function analyzeThreats(svgContent: string): ThreatAnalysis | null {
       isLikelyAttack: true,
       matchedPatterns,
       description: `Detected attack patterns: ${matchedPatterns.join(', ')}`,
+      patternLocations,
     };
   }
 
@@ -250,6 +309,10 @@ const DOMPURIFY_CONFIG = {
   USE_PROFILES: { svg: true, svgFilters: true },
   // Allow standard SVG elements
   ADD_TAGS: ['use', 'symbol', 'defs', 'clipPath', 'mask', 'pattern', 'marker', 'filter'],
+  // Permit data: URIs inside <image href="data:..."> so we can pre-inline
+  // external resources before sanitization. Without this DOMPurify's default
+  // ALLOWED_URI_REGEXP would strip data: URIs from SVG image hrefs.
+  ADD_DATA_URI_TAGS: ['image'],
   // Remove dangerous attributes
   FORBID_ATTR: [
     'onclick',
