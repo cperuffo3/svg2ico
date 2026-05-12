@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  HttpCode,
   MaxFileSizeValidator,
   ParseFilePipe,
   Post,
@@ -13,9 +14,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import archiver from 'archiver';
 import { Request, Response } from 'express';
+import { createRequire } from 'module';
 import { getClientId } from '../../common/client-id/index.js';
+import { inlineExternalImages } from '../../common/security/index.js';
 import { MetricsService } from '../metrics/metrics.service.js';
 import { CfThrottlerGuard } from '../rate-limit/index.js';
 import { ConversionService, type ConversionOptions } from './conversion.service.js';
@@ -27,6 +29,9 @@ import {
   type PngColorspace,
   type RoundnessValue,
 } from './dto/convert.dto.js';
+const require = createRequire(import.meta.url);
+// archiver is a CJS module; Node 24 ESM no longer auto-default-exports it.
+const archiver = require('archiver') as typeof import('archiver');
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -235,6 +240,37 @@ export class ConversionController {
           // Ignore metrics errors
         });
     }
+  }
+
+  @Post('svg-preview')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Inline external resources for a frontend preview',
+    description:
+      'Accepts raw SVG content, fetches any external `<image href="https://...">` ' +
+      'resources (with SSRF protections) and returns the SVG with those resources ' +
+      'inlined as data: URIs. Used by the upload flow so the in-browser preview can ' +
+      'show external images that the browser will not fetch from a data: URL.',
+  })
+  @ApiResponse({ status: 200, description: 'Inlined SVG content' })
+  @ApiResponse({ status: 400, description: 'Invalid SVG payload' })
+  @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
+  async svgPreview(
+    @Body() body: { svgContent?: string },
+  ): Promise<{ svgContent: string; inlined: number; failed: number }> {
+    const svg = typeof body?.svgContent === 'string' ? body.svgContent : '';
+    if (!svg || svg.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('svgContent is required and must be at most 10MB');
+    }
+    if (!svg.includes('<svg')) {
+      throw new BadRequestException('svgContent does not look like an SVG');
+    }
+    const result = await inlineExternalImages(svg);
+    return {
+      svgContent: result.result,
+      inlined: result.inlined,
+      failed: result.failed,
+    };
   }
 
   private parseFormat(format: string | undefined): OutputFormat {

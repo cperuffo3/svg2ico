@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ConfigurationsStats,
   ConversionsStats,
+  ErrorSubmissionDetail,
+  ErrorSubmissionsResponse,
   FailuresStats,
   FormatsStats,
   OverviewStats,
@@ -132,6 +134,89 @@ export function useConfigurationsStats(password: string | null) {
       ),
     enabled: !!password,
     refetchInterval: 60000,
+  });
+}
+
+export function useErrorSubmissions(
+  password: string | null,
+  filter: 'all' | 'unreviewed' | 'reviewed' = 'all',
+) {
+  return useQuery({
+    queryKey: ['admin', 'error-submissions', password, filter],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filter === 'unreviewed') params.set('reviewed', 'false');
+      if (filter === 'reviewed') params.set('reviewed', 'true');
+      const qs = params.toString();
+      return fetchWithAuth<ErrorSubmissionsResponse>(
+        `${env.API_URL}/api/v1/admin/error-submissions${qs ? `?${qs}` : ''}`,
+        password!,
+      );
+    },
+    enabled: !!password,
+    refetchInterval: 30000,
+  });
+}
+
+export function useErrorSubmissionDetail(password: string | null, id: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'error-submission', password, id],
+    queryFn: () =>
+      fetchWithAuth<ErrorSubmissionDetail>(
+        `${env.API_URL}/api/v1/admin/error-submissions/${id}`,
+        password!,
+      ),
+    enabled: !!password && !!id,
+  });
+}
+
+export function useUpdateErrorSubmission(password: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      reviewed?: boolean;
+      reviewerNotes?: string | null;
+    }) => {
+      if (!password) throw new Error('No password provided');
+      const response = await fetch(`${env.API_URL}/api/v1/admin/error-submissions/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'x-admin-password': password,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reviewed: params.reviewed,
+          reviewerNotes: params.reviewerNotes,
+        }),
+      });
+      if (response.status === 401) throw new Error('UNAUTHORIZED');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json() as Promise<ErrorSubmissionDetail>;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'error-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'error-submission', password, vars.id] });
+    },
+  });
+}
+
+export function useDeleteErrorSubmission(password: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!password) throw new Error('No password provided');
+      const response = await fetch(`${env.API_URL}/api/v1/admin/error-submissions/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-password': password },
+      });
+      if (response.status === 401) throw new Error('UNAUTHORIZED');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json() as Promise<{ deleted: boolean }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'error-submissions'] });
+    },
   });
 }
 

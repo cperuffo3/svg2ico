@@ -1,6 +1,7 @@
 import { SEOHead } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
+import { SvgErrorDialog, type SvgErrorDialogData } from '@/features/error-submission';
 import { Footer, Header } from '@/features/home/components';
 import type { FileValidationError } from '@/features/upload-error';
 import { useDebouncedValue } from '@/hooks';
@@ -148,6 +149,8 @@ export function ConvertPage() {
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [svgErrorDialogData, setSvgErrorDialogData] = useState<SvgErrorDialogData | null>(null);
+  const [svgErrorDialogOpen, setSvgErrorDialogOpen] = useState(false);
 
   // PNG background removal state
   const [pngBackgroundRemovalProgress, setPngBackgroundRemovalProgress] =
@@ -307,14 +310,48 @@ export function ConvertPage() {
         const errorText = await response.text();
         // Try to parse JSON error response from NestJS
         let errorMessage = 'Conversion failed';
+        let parsedError: Record<string, unknown> | null = null;
         try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.message) {
-            errorMessage = errorJson.message;
+          parsedError = JSON.parse(errorText);
+          if (parsedError && typeof parsedError.message === 'string') {
+            errorMessage = parsedError.message;
           }
         } catch {
           // If not JSON, use the raw text
           errorMessage = errorText || 'Conversion failed';
+        }
+
+        // If this is an SVG validation error and we still have the source file,
+        // surface the rich dialog with the code editor and submission prompt.
+        const errorType =
+          parsedError && typeof parsedError.errorType === 'string'
+            ? (parsedError.errorType as SvgErrorDialogData['errorType'])
+            : null;
+        if (errorType && uploadedFile.type === 'svg') {
+          try {
+            const svgText = await uploadedFile.file.text();
+            setSvgErrorDialogData({
+              svgContent: svgText,
+              originalFilename: uploadedFile.name,
+              fileSizeBytes: uploadedFile.size,
+              message: errorMessage,
+              errorType,
+              classification:
+                typeof parsedError?.classification === 'string'
+                  ? (parsedError.classification as string)
+                  : undefined,
+              matchedPatterns: Array.isArray(parsedError?.matchedPatterns)
+                ? (parsedError.matchedPatterns as string[])
+                : undefined,
+              patternLocations: Array.isArray(parsedError?.patternLocations)
+                ? (parsedError.patternLocations as SvgErrorDialogData['patternLocations'])
+                : undefined,
+              canSubmit: typeof parsedError?.canSubmit === 'boolean' ? parsedError.canSubmit : true,
+            });
+            setSvgErrorDialogOpen(true);
+          } catch {
+            // If we can't read the file, fall back to the inline error display.
+          }
         }
         throw new Error(errorMessage);
       }
@@ -563,6 +600,9 @@ export function ConvertPage() {
                   progress={progress}
                   estimatedTime={3}
                   errorMessage={errorMessage}
+                  onViewErrorDetails={
+                    svgErrorDialogData ? () => setSvgErrorDialogOpen(true) : undefined
+                  }
                 />
               )}
 
@@ -630,6 +670,11 @@ export function ConvertPage() {
         </div>
       </main>
       <Footer />
+      <SvgErrorDialog
+        open={svgErrorDialogOpen}
+        onOpenChange={setSvgErrorDialogOpen}
+        data={svgErrorDialogData}
+      />
     </div>
   );
 }

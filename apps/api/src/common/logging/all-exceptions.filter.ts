@@ -37,7 +37,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException ? exception.message : 'Internal server error';
 
+    // Preserve structured payloads (errorType, matchedPatterns, patternLocations,
+    // etc.) attached to HttpException responses by handlers that throw a rich
+    // object. Without this, callers only see the canonical fields and lose the
+    // metadata needed to render error-specific UX on the client.
+    const httpResponseBody =
+      exception instanceof HttpException ? exception.getResponse() : undefined;
+    const structuredFields =
+      httpResponseBody && typeof httpResponseBody === 'object' && !Array.isArray(httpResponseBody)
+        ? (httpResponseBody as Record<string, unknown>)
+        : {};
+
     const errorResponse = {
+      ...structuredFields,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,

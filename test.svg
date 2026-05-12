@@ -1,0 +1,6 @@
+<svg width="500" height="400" xmlns="http://www.w3.org/2000/svg">
+    <image href="https://docs.aspose.com/svg/images/svg.html" x="20" y="20" height="180" width="180" />
+    <image href="https://docs.aspose.com/svg/files/shapes.svg" x="250" y="10" height="350" width="350" />
+    <text x="40" y="250">Embedded PNG image</text>
+    <text x="300" y="250">Embedded SVG image</text>
+</svg>
