@@ -65,15 +65,15 @@ function SubmissionDetailPanel({ password, detail, onDeleted }: SubmissionDetail
   // admin page's CSP (img-src 'self' data: blob:), so they wouldn't render in
   // the inline preview either. Inline them via the same SSRF-safe endpoint
   // used by /convert so the preview matches what the conversion will produce.
+  // This panel is keyed on detail.id by its parent, so it remounts when a
+  // different submission is selected — no need to reset state synchronously.
   const [previewSvg, setPreviewSvg] = useState(detail.svgContent);
   useEffect(() => {
+    if (!svgHasExternalImageRefs(detail.svgContent)) return;
     let cancelled = false;
-    setPreviewSvg(detail.svgContent);
-    if (svgHasExternalImageRefs(detail.svgContent)) {
-      inlineSvgForPreview(detail.svgContent).then((inlined) => {
-        if (!cancelled) setPreviewSvg(inlined);
-      });
-    }
+    inlineSvgForPreview(detail.svgContent).then((inlined) => {
+      if (!cancelled) setPreviewSvg(inlined);
+    });
     return () => {
       cancelled = true;
     };

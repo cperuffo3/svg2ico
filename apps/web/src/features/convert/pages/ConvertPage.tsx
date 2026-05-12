@@ -97,53 +97,39 @@ export function ConvertPage() {
   const location = useLocation();
   const uploadedFile = location.state?.file as UploadedFile | undefined;
 
-  const [options, setOptions] = useState<ConversionOptionsType>({
-    scale: 100,
-    backgroundRemoval: { mode: 'none' },
-    cornerRadius: 0,
-    outputFormat: 'icns',
-    pngOptions: DEFAULT_PNG_OPTIONS,
+  // uploadedFile comes from router state at navigation time and does not change
+  // for the lifetime of this page, so clamping PNG options once during the
+  // lazy useState initializer is sufficient — avoids an effect that would
+  // otherwise call setState during render.
+  const [options, setOptions] = useState<ConversionOptionsType>(() => {
+    const base: ConversionOptionsType = {
+      scale: 100,
+      backgroundRemoval: { mode: 'none' },
+      cornerRadius: 0,
+      outputFormat: 'icns',
+      pngOptions: DEFAULT_PNG_OPTIONS,
+    };
+    if (!uploadedFile || uploadedFile.type !== 'png') return base;
+    const { pngMetadata, dimensions } = uploadedFile;
+    if (!pngMetadata && !dimensions) return base;
+
+    const pngOptions = { ...base.pngOptions };
+    if (dimensions) {
+      const maxSize = Math.min(dimensions.width, dimensions.height);
+      if (pngOptions.size > maxSize) pngOptions.size = maxSize;
+    }
+    if (pngMetadata?.dpi && pngOptions.dpi > pngMetadata.dpi) {
+      pngOptions.dpi = pngMetadata.dpi;
+    }
+    if (pngMetadata && pngOptions.colorDepth > pngMetadata.colorDepth) {
+      pngOptions.colorDepth = pngMetadata.colorDepth;
+    }
+    return { ...base, pngOptions };
   });
 
   // Debounce scale and cornerRadius for the expensive ContextPreviewCard renders
   const debouncedScale = useDebouncedValue(options.scale, 150);
   const debouncedCornerRadius = useDebouncedValue(options.cornerRadius, 150);
-
-  // Clamp PNG options when source PNG has constraints
-  useEffect(() => {
-    if (!uploadedFile || uploadedFile.type !== 'png') return;
-
-    const { pngMetadata, dimensions } = uploadedFile;
-    if (!pngMetadata && !dimensions) return;
-
-    setOptions((prev) => {
-      const newPngOptions = { ...prev.pngOptions };
-      let changed = false;
-
-      // Clamp size to source dimensions
-      if (dimensions) {
-        const maxSize = Math.min(dimensions.width, dimensions.height);
-        if (newPngOptions.size > maxSize) {
-          newPngOptions.size = maxSize;
-          changed = true;
-        }
-      }
-
-      // Clamp DPI to source DPI (if available)
-      if (pngMetadata?.dpi && newPngOptions.dpi > pngMetadata.dpi) {
-        newPngOptions.dpi = pngMetadata.dpi;
-        changed = true;
-      }
-
-      // Clamp color depth to source color depth
-      if (pngMetadata && newPngOptions.colorDepth > pngMetadata.colorDepth) {
-        newPngOptions.colorDepth = pngMetadata.colorDepth;
-        changed = true;
-      }
-
-      return changed ? { ...prev, pngOptions: newPngOptions } : prev;
-    });
-  }, [uploadedFile]);
 
   const [conversionState, setConversionState] = useState<ConversionState>('idle');
   const [steps, setSteps] = useState<ConversionStep[]>(defaultSteps);

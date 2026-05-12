@@ -79,9 +79,13 @@ export const ColorPicker = ({
   const [alpha, setAlpha] = useState(selectedColor.alpha() * 100 || defaultColor.alpha() * 100);
   const [mode, setMode] = useState('hex');
 
-  // Store onChange in a ref to avoid triggering effects when callback changes
+  // Store onChange in a ref to avoid triggering effects when callback changes.
+  // Updated in an effect (not during render) so the ref update doesn't violate
+  // React's rules about render purity.
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
   // Track if we're updating from external value to avoid feedback loop
   const isExternalUpdate = useRef(false);

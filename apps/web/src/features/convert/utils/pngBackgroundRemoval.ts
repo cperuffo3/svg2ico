@@ -92,7 +92,9 @@ export async function removePngBackground(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('Background removal failed:', error);
     onProgress?.({ state: 'error', error: errorMessage });
-    throw new Error(`Background removal failed: ${errorMessage}`);
+    throw Object.assign(new Error(`Background removal failed: ${errorMessage}`), {
+      cause: error,
+    });
   }
 }
 
