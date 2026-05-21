@@ -14,8 +14,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ZipArchive } from 'archiver';
 import { Request, Response } from 'express';
-import { createRequire } from 'module';
 import { getClientId } from '../../common/client-id/index.js';
 import { inlineExternalImages } from '../../common/security/index.js';
 import { MetricsService } from '../metrics/metrics.service.js';
@@ -29,9 +29,6 @@ import {
   type PngColorspace,
   type RoundnessValue,
 } from './dto/convert.dto.js';
-const require = createRequire(import.meta.url);
-// archiver is a CJS module; Node 24 ESM no longer auto-default-exports it.
-const archiver = require('archiver') as typeof import('archiver');
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -364,7 +361,7 @@ export class ConversionController {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', 'attachment; filename="icons.zip"');
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     archive.pipe(res);
 
     for (const result of results) {
