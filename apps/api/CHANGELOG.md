@@ -1,5 +1,13 @@
 # @starter/api
 
+## 0.14.1
+
+### Patch Changes
+
+- 27e8fdb: **Backend:**
+  - Fix "archiver is not a function" runtime error on ZIP downloads by migrating to archiver v8's named class exports (`new ZipArchive(...)`)
+  - Add local type declaration for archiver v8 since `@types/archiver` has not been updated upstream
+
 ## 0.14.0
 
 ### Minor Changes
