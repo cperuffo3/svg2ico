@@ -375,13 +375,17 @@ export function ConvertPage() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
-      // Get filename from Content-Disposition header or generate one
+      // Get filename from Content-Disposition header or generate one. A PNG
+      // export with more than one size comes back as a ZIP, so the fallback
+      // name must reflect that when the header is unavailable.
       const contentDisposition = response.headers.get('Content-Disposition');
+      const isMultiSizePng =
+        options.outputFormat === 'png' && options.pngOptions.sizes.length > 1;
       const extensionMap: Record<OutputFormat, string> = {
         ico: 'icon.ico',
         icns: 'icon.icns',
         favicon: 'favicon.ico',
-        png: 'icon.png',
+        png: isMultiSizePng ? 'icons.zip' : 'icon.png',
         all: 'icons.zip',
       };
       let filename = extensionMap[options.outputFormat];
