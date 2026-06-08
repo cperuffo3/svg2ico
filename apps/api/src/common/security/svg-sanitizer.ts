@@ -358,8 +358,11 @@ const DANGEROUS_PATTERNS = [
   /vbscript:/i,
   // Data URI with script
   /data:\s*text\/html/i,
-  // Event handlers that might slip through
-  /on\w+\s*=/i,
+  // Event handlers that might slip through. Require a whitespace boundary
+  // before "on" (matching ATTACK_PATTERNS) so we only flag real event-handler
+  // attributes (e.g. " onclick=") and not "on..." substrings inside legitimate
+  // attribute names like diffuseConstant="1" on <feDiffuseLighting>.
+  /\son\w+\s*=/i,
   // External entity references
   /xmlns:xi\s*=.*xinclude/i,
   /xi:include/i,
