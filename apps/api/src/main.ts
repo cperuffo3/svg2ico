@@ -68,6 +68,11 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
+    // Expose headers the browser must read from cross-origin responses. The
+    // frontend reads Content-Disposition to recover the real download filename
+    // (e.g. "icons.zip" for multi-size PNG exports); without this it falls back
+    // to a guessed name and a multi-PNG ZIP gets saved as a single ".png".
+    exposedHeaders: ['Content-Disposition', 'X-Processing-Time-Ms'],
   });
 
   // OpenAPI/Swagger configuration
