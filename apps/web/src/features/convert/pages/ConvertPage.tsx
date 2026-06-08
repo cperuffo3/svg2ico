@@ -58,13 +58,17 @@ function useIsSmallHeight() {
 function getConversionSteps(
   format: OutputFormat,
   fileType: 'svg' | 'png',
-  pngSize?: number,
+  pngSizes?: number[],
 ): ConversionStep[] {
+  const pngLabel =
+    pngSizes && pngSizes.length > 1
+      ? `${pngSizes.length} PNG sizes (ZIP)`
+      : `PNG (${pngSizes?.[0] ?? 512}px)`;
   const formatLabels: Record<OutputFormat, string> = {
     ico: 'ICO (16-256px)',
     icns: 'ICNS (16-1024px)',
     favicon: 'Favicon ICO',
-    png: `PNG (${pngSize ?? 512}px)`,
+    png: pngLabel,
     all: 'ICO + ICNS bundle',
   };
 
@@ -218,11 +222,16 @@ export function ConvertPage() {
     setProgress(0);
     setErrorMessage(null);
 
+    // Resolve the effective PNG sizes: an explicit list takes precedence over
+    // the single size box (matching the backend's outputSizes/outputSize rule).
+    const effectivePngSizes =
+      options.pngOptions.sizes.length > 0 ? options.pngOptions.sizes : [options.pngOptions.size];
+
     // Get format-specific steps
     const formatSteps = getConversionSteps(
       options.outputFormat,
       uploadedFile.type,
-      options.pngOptions.size,
+      effectivePngSizes,
     );
     const stepsCopy = [...formatSteps];
     setSteps(stepsCopy);
@@ -274,7 +283,13 @@ export function ConvertPage() {
 
       // Add PNG-specific options when exporting to PNG
       if (options.outputFormat === 'png') {
-        formData.append('outputSize', options.pngOptions.size.toString());
+        // When the user has built a list of sizes, send them all (backend emits
+        // a ZIP); otherwise fall back to the single size from the box.
+        if (options.pngOptions.sizes.length > 0) {
+          formData.append('outputSizes', options.pngOptions.sizes.join(','));
+        } else {
+          formData.append('outputSize', options.pngOptions.size.toString());
+        }
         formData.append('pngDpi', options.pngOptions.dpi.toString());
         formData.append('pngColorspace', options.pngOptions.colorspace);
         formData.append('pngColorDepth', options.pngOptions.colorDepth.toString());

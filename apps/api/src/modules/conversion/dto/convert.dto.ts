@@ -58,6 +58,16 @@ export class ConvertOptionsDto {
   outputSize: number = 512;
 
   @ApiProperty({
+    description:
+      'Comma-separated list of PNG output sizes in pixels (only used for PNG format). ' +
+      'When provided, one PNG is generated per size and the result is returned as a ZIP. ' +
+      'Overrides outputSize.',
+    required: false,
+    example: '16,32,48,180,192,512',
+  })
+  outputSizes?: string;
+
+  @ApiProperty({
     description: 'PNG DPI/resolution (only used for PNG format)',
     minimum: 1,
     maximum: 600,

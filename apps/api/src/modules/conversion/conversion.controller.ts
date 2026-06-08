@@ -95,6 +95,12 @@ export class ConversionController {
           default: 512,
           description: 'Output size in pixels (for PNG format)',
         },
+        outputSizes: {
+          type: 'string',
+          description:
+            'Comma-separated PNG sizes (for PNG format). When set, one PNG per size is ' +
+            'generated and returned as a ZIP. Overrides outputSize. Example: "16,32,48,512"',
+        },
         pngDpi: {
           type: 'number',
           minimum: 1,
@@ -171,6 +177,7 @@ export class ConversionController {
       backgroundRemovalMode: this.parseBackgroundRemovalMode(options.backgroundRemovalMode),
       backgroundRemovalColor: options.backgroundRemovalColor,
       outputSize: this.parseOutputSize(options.outputSize),
+      outputSizes: this.parseOutputSizes(options.outputSizes),
       pngDpi: this.parsePngDpi(options.pngDpi),
       pngColorspace: this.parsePngColorspace(options.pngColorspace),
       pngColorDepth: this.parsePngColorDepth(options.pngColorDepth),
@@ -226,6 +233,7 @@ export class ConversionController {
             backgroundRemovalMode: conversionOptions.backgroundRemovalMode,
             backgroundRemovalColor: conversionOptions.backgroundRemovalColor,
             outputSize: conversionOptions.outputSize,
+            outputSizes: conversionOptions.outputSizes?.join(','),
             pngDpi: conversionOptions.pngDpi,
             pngColorspace: conversionOptions.pngColorspace,
             pngColorDepth: conversionOptions.pngColorDepth,
@@ -312,6 +320,33 @@ export class ConversionController {
       throw new BadRequestException('Output size must be between 16 and 2048');
     }
     return parsed;
+  }
+
+  private parseOutputSizes(sizes: string | undefined): number[] | undefined {
+    if (sizes === undefined || sizes === null || sizes === '') {
+      return undefined;
+    }
+    const parts = String(sizes)
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (parts.length === 0) {
+      return undefined;
+    }
+    const parsed: number[] = [];
+    for (const part of parts) {
+      const value = parseInt(part, 10);
+      if (isNaN(value) || value < 16 || value > 2048) {
+        throw new BadRequestException('Each PNG output size must be between 16 and 2048');
+      }
+      parsed.push(value);
+    }
+    // De-duplicate and sort ascending so output is deterministic.
+    const unique = [...new Set(parsed)].sort((a, b) => a - b);
+    if (unique.length > 25) {
+      throw new BadRequestException('A maximum of 25 PNG sizes can be requested at once');
+    }
+    return unique;
   }
 
   private parsePngDpi(dpi: string | number | undefined): number {
