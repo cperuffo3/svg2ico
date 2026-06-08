@@ -156,6 +156,7 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
     cornerRadius,
     backgroundRemovalMode,
     outputSize,
+    outputSizes,
     pngDpi,
     pngColorspace,
     pngColorDepth,
@@ -244,24 +245,45 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
 
     // Convert based on format
     if (format === 'png') {
+      // When the user supplies an explicit list of sizes we emit one PNG per
+      // size (zipped by the controller); otherwise we fall back to the single
+      // outputSize value. For PNG sources we drop any size that would upscale.
+      const requestedSizes = outputSizes && outputSizes.length > 0 ? outputSizes : [outputSize];
+      const availableSizes = filterSizesForSource(requestedSizes, sourceDimensions, jobId);
+      if (availableSizes.length === 0) {
+        const sourceSize = Math.min(sourceDimensions?.width ?? 0, sourceDimensions?.height ?? 0);
+        throw new Error(
+          `Source image is too small for the requested PNG size(s). Source is ${sourceSize}px; no smaller size was requested.`,
+        );
+      }
+      const multiple = availableSizes.length > 1;
       log(
         'debug',
-        `Converting to PNG (${outputSize}x${outputSize}px, ${pngDpi ?? 72} DPI, ${pngColorspace ?? 'srgb'}, ${pngColorDepth ?? 32}-bit)`,
+        `Converting to PNG (${availableSizes.join('px, ')}px, ${pngDpi ?? 72} DPI, ${pngColorspace ?? 'srgb'}, ${pngColorDepth ?? 32}-bit)`,
         jobId,
       );
-      const pngResult = await convertToPng(
-        conversionContext,
-        baseName,
-        scale,
-        cornerRadius,
-        outputSize,
-        pngDpi,
-        pngColorspace,
-        pngColorDepth,
+      const pngResults = await Promise.all(
+        availableSizes.map((size) =>
+          convertToPng(
+            conversionContext,
+            baseName,
+            scale,
+            cornerRadius,
+            size,
+            pngDpi,
+            pngColorspace,
+            pngColorDepth,
+            jobId,
+            multiple,
+          ),
+        ),
+      );
+      log(
+        'verbose',
+        `PNG output: ${pngResults.map((r) => `${r.filename} (${formatBytes(r.buffer.length)})`).join(', ')}`,
         jobId,
       );
-      log('verbose', `PNG output size: ${formatBytes(pngResult.buffer.length)}`, jobId);
-      results.push(pngResult);
+      results.push(...pngResults);
     } else if (format === 'ico') {
       const availableSizes = filterSizesForSource(ICO_SIZES, sourceDimensions, jobId);
       if (availableSizes.length === 0) {
@@ -454,6 +476,7 @@ async function convertToPng(
   pngColorspace?: PngColorspace,
   pngColorDepth?: PngColorDepth,
   jobId?: string,
+  includeSizeInName = false,
 ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   try {
     const [pngBuffer] = await renderToPngs(context, [outputSize], scale, cornerRadius, jobId);
@@ -504,7 +527,9 @@ async function convertToPng(
 
     return {
       buffer: finalBuffer,
-      filename: `${baseName}.png`,
+      filename: includeSizeInName
+        ? `${baseName}-${outputSize}x${outputSize}.png`
+        : `${baseName}.png`,
       mimeType: 'image/png',
     };
   } catch (error) {

@@ -23,6 +23,7 @@ export interface ConversionJobData {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  outputSizes?: number[]; // Multiple PNG sizes -> emitted as a ZIP (overrides outputSize)
   pngDpi?: number; // DPI for PNG output
   pngColorspace?: PngColorspace; // Colorspace for PNG output
   pngColorDepth?: PngColorDepth; // Color depth for PNG output (8, 24, or 32 bit)

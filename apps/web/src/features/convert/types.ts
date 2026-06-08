@@ -7,7 +7,8 @@ export type PngColorspace = 'srgb' | 'p3' | 'cmyk';
 export type PngColorDepth = 8 | 24 | 32;
 
 export interface PngOutputOptions {
-  size: number; // 16-2048px
+  size: number; // 16-2048px (used when `sizes` is empty)
+  sizes: number[]; // Explicit list of sizes; when non-empty, output is a ZIP of every size
   dpi: number; // Custom DPI (1-600)
   colorspace: PngColorspace;
   colorDepth: PngColorDepth;
@@ -54,6 +55,7 @@ export interface ConversionOptions {
 
 export const DEFAULT_PNG_OPTIONS: PngOutputOptions = {
   size: 512,
+  sizes: [],
   dpi: 72,
   colorspace: 'srgb',
   colorDepth: 32,

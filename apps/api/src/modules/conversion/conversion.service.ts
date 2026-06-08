@@ -72,6 +72,7 @@ export interface ConversionOptions {
   backgroundRemovalMode: BackgroundRemovalMode;
   backgroundRemovalColor?: string;
   outputSize: number;
+  outputSizes?: number[];
   pngDpi?: number;
   pngColorspace?: PngColorspace;
   pngColorDepth?: PngColorDepth;
@@ -292,6 +293,7 @@ export class ConversionService {
         backgroundRemovalMode: options.backgroundRemovalMode,
         backgroundRemovalColor: options.backgroundRemovalColor,
         outputSize: options.outputSize,
+        outputSizes: options.outputSizes,
         pngDpi: options.pngDpi,
         pngColorspace: options.pngColorspace,
         pngColorDepth: options.pngColorDepth,
