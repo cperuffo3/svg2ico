@@ -105,12 +105,12 @@ export class ConversionService {
       if (!this.isValidSvg(svgString)) {
         const analysis = createMalformedAnalysis(
           ThreatClassification.INVALID_FORMAT,
-          'File does not start with <svg or <?xml declaration',
+          'No <svg> root element found',
         );
         this.logSecurityEvent(originalFilename, analysis);
         throw svgError({
           message:
-            'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+            'The uploaded file is not a valid SVG. Expected an <svg> root element, optionally preceded by an XML declaration or comments.',
           errorType: 'invalid_format',
           classification: analysis.classification,
           canSubmit: true,
@@ -364,13 +364,19 @@ export class ConversionService {
   }
 
   private isValidSvg(content: string): boolean {
-    const trimmed = content.trim();
-    // Must have <svg tag somewhere
-    if (!trimmed.includes('<svg')) {
-      return false;
-    }
-    // Can start with XML declaration or directly with <svg
-    return trimmed.startsWith('<svg') || trimmed.startsWith('<?xml');
+    // A BOM, XML declaration, comments, and a DOCTYPE may all legally precede
+    // the root element - skip past them and require the root to be <svg
+    let rest = content.replace(/^\uFEFF/, '').trimStart();
+    let prev: string;
+    do {
+      prev = rest;
+      rest = rest
+        .replace(/^<\?xml[\s\S]*?\?>/i, '')
+        .replace(/^<!--[\s\S]*?-->/, '')
+        .replace(/^<!DOCTYPE[^>[]*(\[[\s\S]*?\])?[^>]*>/i, '')
+        .trimStart();
+    } while (rest !== prev);
+    return rest.startsWith('<svg');
   }
 
   private isValidPng(buffer: Buffer): boolean {
