@@ -200,7 +200,7 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
           jobId,
           success: false,
           error:
-            'The uploaded file is not a valid SVG. Expected file to start with <svg or <?xml declaration.',
+            'The uploaded file is not a valid SVG. Expected an <svg> root element, optionally preceded by an XML declaration or comments.',
           processingTimeMs: Date.now() - startTime,
         };
       }
@@ -443,13 +443,19 @@ async function processJob(data: ConversionJobData): Promise<ConversionJobResult>
  * Validate that content is a valid SVG
  */
 function isValidSvg(content: string): boolean {
-  const trimmed = content.trim();
-  // Check for SVG content - must have <svg tag somewhere
-  if (!trimmed.includes('<svg')) {
-    return false;
-  }
-  // Can start with XML declaration or directly with <svg
-  return trimmed.startsWith('<svg') || trimmed.startsWith('<?xml');
+  // A BOM, XML declaration, comments, and a DOCTYPE may all legally precede
+  // the root element - skip past them and require the root to be <svg
+  let rest = content.replace(/^\uFEFF/, '').trimStart();
+  let prev: string;
+  do {
+    prev = rest;
+    rest = rest
+      .replace(/^<\?xml[\s\S]*?\?>/i, '')
+      .replace(/^<!--[\s\S]*?-->/, '')
+      .replace(/^<!DOCTYPE[^>[]*(\[[\s\S]*?\])?[^>]*>/i, '')
+      .trimStart();
+  } while (rest !== prev);
+  return rest.startsWith('<svg');
 }
 
 /**
