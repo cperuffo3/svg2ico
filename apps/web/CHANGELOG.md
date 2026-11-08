@@ -1,5 +1,11 @@
 # @starter/web
 
+## 0.15.4
+
+### Patch Changes
+
+- eb75287: ci: fix releases not deploying to Railway. The release workflow now pushes `master` and `production` atomically and no longer cancels in-progress runs (the version-commit push was cancelling the original run before it reached the production push). Also bumps `actions/checkout` and `actions/setup-node` to v7.
+
 ## 0.15.3
 
 ### Patch Changes
