@@ -5,6 +5,7 @@ import { SvgErrorDialog, type SvgErrorDialogData } from '@/features/error-submis
 import { Footer, Header } from '@/features/home/components';
 import type { FileValidationError } from '@/features/upload-error';
 import { useDebouncedValue } from '@/hooks';
+import { useServiceStatus } from '@/providers';
 import {
   faArrowsRotate,
   faCircleInfo,
@@ -37,6 +38,8 @@ import {
 import { removePngBackground } from '../utils/pngBackgroundRemoval';
 
 const SMALL_HEIGHT_THRESHOLD = 1100;
+// Generous: large "all formats" bundles can take a while to render.
+const CONVERT_TIMEOUT_MS = 90_000;
 
 function useIsSmallHeight() {
   const [isSmallHeight, setIsSmallHeight] = useState(
@@ -98,6 +101,7 @@ function formatFileSize(bytes: number): string {
 
 export function ConvertPage() {
   const navigate = useNavigate();
+  const { reportPossibleOutage } = useServiceStatus();
   const location = useLocation();
   const uploadedFile = location.state?.file as UploadedFile | undefined;
 
@@ -301,11 +305,31 @@ export function ConvertPage() {
         formData.append('sourceHeight', uploadedFile.dimensions.height.toString());
       }
 
-      const response = await fetch(`${env.API_URL}/api/v1/convert`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${env.API_URL}/api/v1/convert`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          // Never hang indefinitely if the backend stops responding.
+          signal: AbortSignal.timeout(CONVERT_TIMEOUT_MS),
+        });
+      } catch (fetchError) {
+        // Network failure or timeout: likely an outage. Re-check health so
+        // the outage screen appears if the service is actually down.
+        reportPossibleOutage();
+        const timedOut = fetchError instanceof DOMException && fetchError.name === 'TimeoutError';
+        throw new Error(
+          timedOut
+            ? 'The server took too long to respond. Please try again in a moment.'
+            : "We couldn't reach the server. Please check your connection and try again.",
+          { cause: fetchError },
+        );
+      }
+
+      if (response.status >= 500) {
+        reportPossibleOutage();
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -379,8 +403,7 @@ export function ConvertPage() {
       // export with more than one size comes back as a ZIP, so the fallback
       // name must reflect that when the header is unavailable.
       const contentDisposition = response.headers.get('Content-Disposition');
-      const isMultiSizePng =
-        options.outputFormat === 'png' && options.pngOptions.sizes.length > 1;
+      const isMultiSizePng = options.outputFormat === 'png' && options.pngOptions.sizes.length > 1;
       const extensionMap: Record<OutputFormat, string> = {
         ico: 'icon.ico',
         icns: 'icon.icns',
@@ -426,7 +449,7 @@ export function ConvertPage() {
         setSteps([...stepsCopy]);
       }
     }
-  }, [uploadedFile, options, processedPngDataUrl]);
+  }, [uploadedFile, options, processedPngDataUrl, reportPossibleOutage]);
 
   const handleConvert = useCallback(() => {
     if (conversionState === 'idle') {

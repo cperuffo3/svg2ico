@@ -2,7 +2,11 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
 import { createHash } from 'crypto';
-import { PrismaService } from '../../common/index.js';
+import { PrismaService, withTimeout } from '../../common/index.js';
+
+// Rate limiting runs before every conversion, so a hung DB must not stall
+// requests for the full pool query_timeout. Past this, we fail open.
+const STORAGE_TIMEOUT_MS = 2_000;
 
 @Injectable()
 export class PrismaThrottlerStorage implements ThrottlerStorage, OnModuleInit, OnModuleDestroy {
@@ -33,6 +37,36 @@ export class PrismaThrottlerStorage implements ThrottlerStorage, OnModuleInit, O
     limit: number,
     blockDuration: number,
     _throttlerName: string,
+  ): Promise<ThrottlerStorageRecord> {
+    try {
+      return await withTimeout(
+        this.incrementInDb(key, ttl, limit, blockDuration),
+        STORAGE_TIMEOUT_MS,
+        'Rate limit storage',
+      );
+    } catch (error) {
+      // Fail open: conversions don't need the database, so a DB outage must not
+      // take them down. Rate limiting is briefly unenforced instead.
+      const now = Date.now();
+      if (now - this.lastFailOpenLogAt > 60_000) {
+        this.lastFailOpenLogAt = now;
+        this.logger.error(
+          `Rate limit storage unavailable, allowing request (fail-open): ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+      return { totalHits: 0, timeToExpire: ttl, isBlocked: false, timeToBlockExpire: 0 };
+    }
+  }
+
+  private lastFailOpenLogAt = 0;
+
+  private async incrementInDb(
+    key: string,
+    ttl: number,
+    limit: number,
+    blockDuration: number,
   ): Promise<ThrottlerStorageRecord> {
     const ipHash = this.hashKey(key);
     const now = new Date();
