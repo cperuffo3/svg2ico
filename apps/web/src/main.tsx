@@ -15,7 +15,7 @@ import {
   UploadErrorPage,
 } from './features';
 import './index.css';
-import { ErrorBoundaryProvider } from './providers';
+import { ErrorBoundaryProvider, ServiceStatusProvider } from './providers';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,19 +31,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HelmetProvider>
       <ErrorBoundaryProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/convert" element={<ConvertPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/api-docs" element={<ApiDocsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/upload-error" element={<UploadErrorPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </BrowserRouter>
+          <ServiceStatusProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/convert" element={<ConvertPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/api-docs" element={<ApiDocsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/upload-error" element={<UploadErrorPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </BrowserRouter>
+          </ServiceStatusProvider>
         </QueryClientProvider>
       </ErrorBoundaryProvider>
     </HelmetProvider>

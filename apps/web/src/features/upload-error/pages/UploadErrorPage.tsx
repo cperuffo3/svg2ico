@@ -83,7 +83,7 @@ export function UploadErrorPage() {
       <Card className="w-full max-w-lg text-center transition-all duration-300 overflow-hidden">
         <CardHeader>
           <div className="mx-auto mb-4">
-            <FontAwesomeIcon icon={icon} className="h-16 w-16 text-destructive" />
+            <FontAwesomeIcon icon={icon} className="text-6xl text-destructive" />
           </div>
           <CardTitle className="text-2xl">{title}</CardTitle>
           {error.fileName && (

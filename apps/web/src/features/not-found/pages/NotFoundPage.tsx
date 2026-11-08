@@ -12,7 +12,7 @@ export function NotFoundPage() {
       <Card className="w-full max-w-lg text-center">
         <CardHeader>
           <div className="mx-auto mb-4">
-            <FontAwesomeIcon icon={faSearch} className="h-16 w-16 text-muted-foreground" />
+            <FontAwesomeIcon icon={faSearch} className="text-6xl text-muted-foreground" />
           </div>
           <CardTitle className="text-6xl font-bold text-primary">404</CardTitle>
           <CardTitle className="mt-2 text-2xl">Page Not Found</CardTitle>

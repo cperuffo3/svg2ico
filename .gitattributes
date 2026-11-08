@@ -1,0 +1,15 @@
+# Always use LF in the working tree to match Prettier (endOfLine: lf),
+# regardless of core.autocrlf on Windows checkouts.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.zip binary

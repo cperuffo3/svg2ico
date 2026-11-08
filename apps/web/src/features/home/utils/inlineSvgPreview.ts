@@ -25,6 +25,8 @@ export async function inlineSvgForPreview(svg: string): Promise<string> {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ svgContent: svg }),
+      // Best-effort: fall back to the original SVG rather than hang the preview.
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) return svg;
     const json = (await response.json()) as { svgContent?: string };

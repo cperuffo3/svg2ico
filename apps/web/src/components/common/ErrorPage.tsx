@@ -70,7 +70,7 @@ function ErrorPageContent({
       <Card className="w-full max-w-lg text-center transition-all duration-300 overflow-hidden">
         <CardHeader>
           <div className="mx-auto mb-4">
-            <FontAwesomeIcon icon={faTriangleExclamation} className="h-16 w-16 text-destructive" />
+            <FontAwesomeIcon icon={faTriangleExclamation} className="text-6xl text-destructive" />
           </div>
           <CardTitle className="text-2xl">Something went wrong</CardTitle>
           <CardDescription className="text-base">
