@@ -7,7 +7,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel: the version-commit push re-triggers this workflow, and
+  # cancelling the original run could skip the production push.
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -18,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -27,7 +29,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -60,7 +62,8 @@ jobs:
           git add -A
           VERSION=$(node -p "require('./apps/api/package.json').version")
           git commit -m "v$VERSION" || echo "No changes to commit"
-          git push
+          # Push master and production together so Railway always gets the release
+          git push --atomic origin HEAD:master HEAD:production
 
       - name: Extract version
         if: steps.changesets.outputs.has_changesets == 'true'
@@ -87,8 +90,3 @@ jobs:
             --target master
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: Push to production branch
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: |
-          git push origin HEAD:production
